@@ -1,13 +1,15 @@
+// src/pages/PremiumVideo.jsx
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { createClient } from "contentful";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-const SPACE_ID = "8e41pkw4is56";
-const ACCESS_TOKEN = "qM0FzdQIPkX6VF4rt8wXzzLiPdgbjmmNGzHarCK0l8I";
-
-const client = createClient({ space: SPACE_ID, accessToken: ACCESS_TOKEN });
+// ✅ Use Vite env variables for security
+const client = createClient({
+  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
+  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
+});
 
 const getEmbedUrl = (url) => {
   if (!url) return "";
@@ -43,14 +45,18 @@ export default function PremiumVideo() {
       });
   }, [id]);
 
-  if (loading) return <div className="text-adinkra-gold text-center mt-20">Loading...</div>;
+  if (loading)
+    return <div className="text-adinkra-gold text-center mt-20">Loading...</div>;
 
   if (!video)
     return (
       <div className="text-adinkra-gold text-center mt-20">
         Video not found.
         <div className="mt-4">
-          <Link to="/premium-tv" className="text-adinkra-highlight hover:underline">
+          <Link
+            to="/premium-tv"
+            className="text-adinkra-highlight hover:underline"
+          >
             ← Back to Premium Videos
           </Link>
         </div>
@@ -82,13 +88,14 @@ export default function PremiumVideo() {
         </p>
 
         <div className="mt-8">
-          <Link to="/premium-tv" className="text-adinkra-highlight hover:underline">
+          <Link
+            to="/premium-tv"
+            className="text-adinkra-highlight hover:underline"
+          >
             ← Back to Premium Videos
           </Link>
         </div>
       </main>
-
-      
     </div>
   );
 }

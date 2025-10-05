@@ -1,13 +1,15 @@
+// src/pages/PremiumTV.jsx
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Link } from "react-router-dom";
 
-const SPACE_ID = "8e41pkw4is56";
-const ACCESS_TOKEN = "qM0FzdQIPkX6VF4rt8wXzzLiPdgbjmmNGzHarCK0l8I";
-
-const client = createClient({ space: SPACE_ID, accessToken: ACCESS_TOKEN });
+// ✅ Use Vite env variables instead of hardcoded keys
+const client = createClient({
+  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
+  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
+});
 
 const plainTextDescription = (richText) => {
   return richText?.content
@@ -79,15 +81,15 @@ export default function PremiumTV() {
                   <h4 className="text-lg font-semibold mb-1">{title}</h4>
                   <p className="text-sm italic text-adinkra-gold/70 mb-1">{category}</p>
                   <p className="text-sm text-adinkra-gold/80">{excerpt}...</p>
-                  <p className="text-xs mt-1 text-adinkra-highlight font-semibold uppercase">Premium</p>
+                  <p className="text-xs mt-1 text-adinkra-highlight font-semibold uppercase">
+                    Premium
+                  </p>
                 </Link>
               );
             })}
           </div>
         )}
       </main>
-
-      
     </div>
   );
 }

@@ -1,13 +1,15 @@
+// src/pages/HouseOfAusar.jsx
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Link } from "react-router-dom";
 
-const SPACE_ID = "8e41pkw4is56";
-const ACCESS_TOKEN = "qM0FzdQIPkX6VF4rt8wXzzLiPdgbjmmNGzHarCK0l8I";
-
-const client = createClient({ space: SPACE_ID, accessToken: ACCESS_TOKEN });
+// ✅ Use Vite env variables instead of hardcoded keys
+const client = createClient({
+  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
+  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
+});
 
 export default function HouseOfAusar() {
   const [ausarPosts, setAusarPosts] = useState([]);
@@ -32,7 +34,7 @@ export default function HouseOfAusar() {
       {/* Hero Section */}
       <section className="relative w-full h-[70vh] bg-black">
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center hidden md:block"
           style={{ backgroundImage: "url('/house-of-ausar-hero-desktop.jpg')" }}
         />
         <div
@@ -88,7 +90,6 @@ export default function HouseOfAusar() {
           })}
         </div>
       </section>
- 
     </div>
   );
 }

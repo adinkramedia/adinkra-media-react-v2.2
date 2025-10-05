@@ -1,14 +1,15 @@
 // src/pages/AdinkraTV.jsx
-
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Link } from "react-router-dom";
 
-const SPACE_ID = "8e41pkw4is56";
-const ACCESS_TOKEN = "qM0FzdQIPkX6VF4rt8wXzzLiPdgbjmmNGzHarCK0l8I";
-const client = createClient({ space: SPACE_ID, accessToken: ACCESS_TOKEN });
+// ✅ Use Vite env variables instead of hardcoded credentials
+const client = createClient({
+  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
+  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
+});
 
 const liveChannels = [
   {
@@ -242,8 +243,6 @@ export default function AdinkraTV() {
             })}
         </div>
       </section>
-
-      
     </div>
   );
 }

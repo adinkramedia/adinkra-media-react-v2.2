@@ -1,3 +1,4 @@
+// src/pages/HouseArticle.jsx
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
@@ -7,9 +8,10 @@ import { documentToReactComponents } from "@contentful/rich-text-react-renderer"
 import { BLOCKS } from "@contentful/rich-text-types";
 import { supabase } from "../lib/supabase";
 
+// ✅ Use Vite env variables instead of hardcoded credentials
 const client = createClient({
-  space: "8e41pkw4is56",
-  accessToken: "qM0FzdQIPkX6VF4rt8wXzzLiPdgbjmmNGzHarCK0l8I",
+  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
+  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
 });
 
 const options = {
@@ -257,7 +259,6 @@ export default function HouseArticle() {
           </div>
         )}
       </section>
-   
     </div>
   );
 }

@@ -11,9 +11,11 @@ import { useAuth0 } from "@auth0/auth0-react";
 import AuthButton from "../components/AuthButton";
 import PayPalSubscribeButton from "../components/PayPalSubscribeButton"; // ✅ For R45/month sub
 
-const SPACE_ID = "8e41pkw4is56";
-const ACCESS_TOKEN = "qM0FzdQIPkX6VF4rt8wXzzLiPdgbjmmNGzHarCK0l8I";
-const client = createClient({ space: SPACE_ID, accessToken: ACCESS_TOKEN });
+// ✅ Updated to use Vite env variables
+const client = createClient({
+  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
+  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
+});
 
 const categories = [
   "All",
@@ -335,8 +337,6 @@ export default function News() {
           <PayPalSubscribeButton />
         </div>
       </section>
-
-      
     </div>
   );
 }
