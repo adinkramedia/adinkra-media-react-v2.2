@@ -3,10 +3,12 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Ensure proper asset & routing behavior
+  base: '/', // Keep '/' if deploying at root
+  build: {
+    outDir: 'dist', // Default, ensures Netlify picks up the right folder
+  },
   server: {
     watch: {
-      // Ignore the Python virtual environment and any node_modules
       ignored: ['**/.venv/**', '**/node_modules/**']
     }
   }
