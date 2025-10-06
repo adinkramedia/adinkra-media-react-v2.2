@@ -15,7 +15,7 @@ const client = createClient({
 });
 
 const restrictedTypes = ["Opinion", "Analysis", "Deep Feature", "Exclusive Feature"];
-const loginOnlyTypes = ["Breaking", "Deep Feature", "Feature", "Sports", "Exclusive Feature"];
+const loginOnlyTypes = ["Breaking", "Deep Feature", "Feature", "Sports"];
 
 const options = {
   renderMark: {
