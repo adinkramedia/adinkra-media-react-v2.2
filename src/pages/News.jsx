@@ -33,8 +33,8 @@ const categories = [
   "News",
 ];
 
-const articleTypes = ["All", "Breaking", "Analysis", "Feature", "Opinion", "News", "Sports"];
-const restrictedTypes = ["Feature", "Opinion", "Analysis"]; // 🔒 Premium articles
+const articleTypes = ["All", "Breaking", "Analysis", "Feature", "Opinion", "News", "Sports", "Deep Feature", "Exclusive Feature"];
+const restrictedTypes = ["Deep Feature", "Opinion", "Analysis", "Exclusive Feature"]; // 🔒 Premium articles
 const loginOnlyTypes = ["News", "Sports", "Feature", "Analysis"]; // 🧑‍💻 Require Auth0 login
 
 function CollapsibleAudioBox({ clip }) {
