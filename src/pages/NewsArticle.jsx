@@ -15,7 +15,7 @@ const client = createClient({
 });
 
 const restrictedTypes = ["Opinion", "Analysis", "Deep Feature", "Exclusive Feature"];
-const loginOnlyTypes = ["Breaking", "Deep Feature", "Feature", "Sports"];
+const loginOnlyTypes = ["Breaking", "Deep Feature", "Feature", "Sports", "Exclusive Feature"];
 
 const options = {
   renderMark: {
@@ -185,8 +185,8 @@ export default function NewsArticle() {
   if (isLoginOnly && !isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-adinkra-bg text-adinkra-gold text-center px-6">
-        <h2 className="text-3xl font-bold mb-4">🔒 Breaking News Access</h2>
-        <p className="mb-6">You must be logged in to read Breaking News articles.</p>
+        <h2 className="text-3xl font-bold mb-4">🔒 Log in required</h2>
+        <p className="mb-6">You must be logged in to read this article.</p>
         <button
           onClick={() => loginWithRedirect()}
           className="bg-adinkra-highlight text-black font-semibold px-6 py-3 rounded-full hover:bg-yellow-400 transition"

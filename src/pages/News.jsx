@@ -35,7 +35,7 @@ const categories = [
 
 const articleTypes = ["All", "Breaking", "Analysis", "Feature", "Opinion", "News", "Sports", "Deep Feature", "Exclusive Feature"];
 const restrictedTypes = ["Deep Feature", "Opinion", "Analysis", "Exclusive Feature"]; // 🔒 Premium articles
-const loginOnlyTypes = ["News", "Sports", "Feature", "Analysis"]; // 🧑‍💻 Require Auth0 login
+const loginOnlyTypes = ["News", "Sports", "Feature", "Analysis", "Exclusive Feature", "Deep Feature"]; // 🧑‍💻 Require Auth0 login
 
 function CollapsibleAudioBox({ clip }) {
   const [isOpen, setIsOpen] = useState(false);
