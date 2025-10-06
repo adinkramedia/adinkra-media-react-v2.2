@@ -14,8 +14,8 @@ const client = createClient({
   accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
 });
 
-const restrictedTypes = ["Feature", "Opinion", "Analysis", "Sports"];
-const loginOnlyTypes = ["Breaking"];
+const restrictedTypes = ["Opinion", "Analysis", "Deep Feature", "Exclusive Feature"];
+const loginOnlyTypes = ["Breaking", "Deep Feature", "Feature", "Sports", "Exclusive Feature"];
 
 const options = {
   renderMark: {
