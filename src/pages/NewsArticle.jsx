@@ -77,7 +77,7 @@ export default function NewsArticle() {
         fetchLikes(entry.fields.slug || entry.sys.id);
         updateMetaTags(entry);
 
-        // ✅ Check free access
+        // ✅ Check free access list
         const freeEmailsRaw = entry.fields.freeAccessEmails || "";
         const emailList = freeEmailsRaw
           .split(/[,;\n]/)
@@ -86,14 +86,8 @@ export default function NewsArticle() {
 
         const userEmail = user?.email?.trim().toLowerCase();
 
-        console.log("🟡 Free access list:", emailList);
-        console.log("🟢 Logged in as:", userEmail);
-
         if (isAuthenticated && userEmail && emailList.includes(userEmail)) {
-          console.log("✅ Free access granted to:", userEmail);
           setHasFreeAccess(true);
-        } else {
-          console.log("🚫 No free access for:", userEmail);
         }
       } catch (err) {
         console.error("Error fetching article:", err);
@@ -174,6 +168,7 @@ export default function NewsArticle() {
     category,
     date,
     articleType,
+    mediaAssets, // ✅ new field
   } = article.fields || {};
 
   const coverUrl = coverImage?.fields?.file?.url;
@@ -181,7 +176,7 @@ export default function NewsArticle() {
   const isLoginOnly = loginOnlyTypes.includes(articleType);
   const currentUrl = window.location.href;
 
-  // ✅ LOGIN-ONLY (e.g., Breaking)
+  // 🔒 LOGIN-ONLY
   if (isLoginOnly && !isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-adinkra-bg text-adinkra-gold text-center px-6">
@@ -220,7 +215,7 @@ export default function NewsArticle() {
 
       <SponsorCard />
 
-      {/* 📰 Article Body */}
+      {/* 📰 Main Article Body */}
       {BodyContent && (
         <div className="prose prose-invert prose-lg text-adinkra-gold max-w-none mb-12">
           {isRestricted && !hasFreeAccess
@@ -235,7 +230,62 @@ export default function NewsArticle() {
         </div>
       )}
 
-      {/* 🔒 Paywall Section */}
+      {/* 🖼️ Media Assets Gallery */}
+      {mediaAssets?.length > 0 && (
+        <div className="border-t border-adinkra-highlight/30 pt-8 mt-8">
+          <h3 className="text-2xl font-semibold mb-4 text-adinkra-gold">
+            Media Assets
+          </h3>
+          <div className="grid gap-6 md:grid-cols-2">
+            {mediaAssets.map((asset, idx) => {
+              const file = asset.fields?.file;
+              if (!file) return null;
+
+              const url = `https:${file.url}`;
+              const type = file.contentType;
+
+              if (type.startsWith("image"))
+                return (
+                  <img
+                    key={idx}
+                    src={url}
+                    alt={asset.fields.title || "Media"}
+                    className="rounded-lg shadow-md"
+                  />
+                );
+
+              if (type.startsWith("video"))
+                return (
+                  <video
+                    key={idx}
+                    src={url}
+                    controls
+                    className="rounded-lg shadow-md w-full"
+                  />
+                );
+
+              if (type.startsWith("audio"))
+                return (
+                  <audio key={idx} src={url} controls className="w-full" />
+                );
+
+              return (
+                <a
+                  key={idx}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-adinkra-highlight"
+                >
+                  {asset.fields.title || file.fileName}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 🔒 Paywall */}
       {isRestricted && !hasFreeAccess && (
         <div className="text-center mt-8 border-t border-adinkra-highlight/30 pt-8">
           <p className="mb-4 text-adinkra-gold/80 text-lg">
@@ -255,7 +305,7 @@ export default function NewsArticle() {
           {loadingLike ? "Liking..." : `👍 Like (${likeCount})`}
         </button>
 
-        {/* 🌍 Social Share Buttons */}
+        {/* 🌍 Share */}
         <div className="flex flex-wrap gap-3">
           <a
             href={`https://wa.me/?text=${encodeURIComponent(newsArticle + " - " + currentUrl)}`}
