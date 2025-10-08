@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+// src/components/BackgroundAudioPlayer.jsx
+import { useState, useMemo, useEffect } from "react";
 import { useAudioPlayer } from "./AudioPlayerContext";
 import { useAuth0 } from "@auth0/auth0-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,7 +13,6 @@ import {
   X,
   StopCircle,
 } from "lucide-react";
-import WaveformPlayer from "./WaveformPlayer";
 import AuthButton from "./AuthButton";
 
 export default function BackgroundAudioPlayer({ isSubscribed }) {
@@ -27,6 +27,7 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
     prevTrack,
     stopTrack,
     setCurrentIndex,
+    audioRef,
   } = useAudioPlayer();
 
   const { isAuthenticated } = useAuth0();
@@ -35,7 +36,7 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
 
   const handleToggleOpen = () => setIsOpen((prev) => !prev);
 
-  // 🪷 Category filter
+  // 🪷 Categories
   const categories = ["All", ...new Set(tracks.map((t) => t.fields.category))];
   const filteredTracks =
     selectedCategory === "All"
@@ -46,7 +47,7 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
   const currentFile = tracks[currentIndex]?.fields?.file?.fields?.file?.url;
   const isPremium = tracks[currentIndex]?.fields?.premium || false;
 
-  // 🎨 Dynamic orb color based on category
+  // 🌈 Orb color based on category
   const orbColor = useMemo(() => {
     const cat = selectedCategory.toLowerCase();
     if (cat.includes("nature")) return "from-green-400 via-emerald-500 to-teal-600";
@@ -55,12 +56,21 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
       return "from-blue-400 via-cyan-500 to-sky-600";
     if (cat.includes("fire") || cat.includes("energy") || cat.includes("rhythm"))
       return "from-orange-400 via-red-500 to-amber-600";
-    return "from-yellow-500 via-amber-400 to-yellow-600"; // default golden glow
+    return "from-yellow-500 via-amber-400 to-yellow-600";
   }, [selectedCategory]);
+
+  // 🎵 Auto next track
+  useEffect(() => {
+    if (!audioRef?.current) return;
+    const audio = audioRef.current;
+    const handleEnded = () => nextTrack();
+    audio.addEventListener("ended", handleEnded);
+    return () => audio.removeEventListener("ended", handleEnded);
+  }, [audioRef, nextTrack]);
 
   return (
     <>
-      {/* 🌕 Glowing Pulsing “Zen Orb” Button */}
+      {/* 🌕 Floating Zen Orb */}
       <motion.button
         onClick={handleToggleOpen}
         whileTap={{ scale: 0.9 }}
@@ -98,13 +108,13 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed bottom-24 left-6 z-50 bg-adinkra-highlight/20 backdrop-blur-lg border border-adinkra-highlight/30 rounded-2xl shadow-xl p-4 w-[340px] flex flex-col gap-3 overflow-hidden"
+            className="fixed bottom-24 left-6 right-6 sm:left-6 sm:right-auto z-50 bg-adinkra-highlight/20 backdrop-blur-lg border border-adinkra-highlight/30 rounded-2xl shadow-xl p-4 sm:w-[340px] flex flex-col gap-3 overflow-hidden"
             initial={{ opacity: 0, y: 20, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.8 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
-            {/* 🪶 Zen Orb Header */}
+            {/* 🪶 Header */}
             <div className="text-center mb-2">
               <motion.h2
                 initial={{ opacity: 0 }}
@@ -119,7 +129,7 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
               </p>
             </div>
 
-            {/* 🏷️ Track Info Header */}
+            {/* 🏷️ Track Info */}
             <div className="flex justify-between items-center">
               <p className="text-sm font-semibold text-adinkra-gold truncate">
                 {currentTrack}
@@ -130,7 +140,7 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
             </div>
 
             {/* 🎚️ Category Selector */}
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {categories.map((cat) => (
                 <button
                   key={cat}
@@ -146,7 +156,7 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
               ))}
             </div>
 
-            {/* 🔒 Lock entire player when not logged in or subscribed */}
+            {/* 🔒 Auth / Subscription Locks */}
             {!isAuthenticated ? (
               <div className="absolute inset-0 bg-black/80 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 z-10">
                 <p className="text-adinkra-gold mb-3 text-sm text-center">
@@ -163,15 +173,8 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
               </div>
             ) : null}
 
-            {/* 🎧 Waveform Player */}
-            <WaveformPlayer
-              audioUrl={currentFile ? `https:${currentFile}` : ""}
-              isPlaying={isPlaying}
-              togglePlay={togglePlay}
-            />
-
-            {/* 🎛️ Controls */}
-            <div className="flex items-center justify-between">
+            {/* 🎛️ Controls (no waveform) */}
+            <div className="flex items-center justify-between flex-wrap gap-2 mt-2">
               <SkipBack
                 className="cursor-pointer w-6 h-6 text-adinkra-gold hover:text-adinkra-highlight"
                 onClick={prevTrack}
@@ -195,27 +198,27 @@ export default function BackgroundAudioPlayer({ isSubscribed }) {
                 className="cursor-pointer w-6 h-6 text-adinkra-gold hover:text-adinkra-highlight"
                 onClick={nextTrack}
               />
-              <Volume2 className="w-5 h-5 text-adinkra-gold" />
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-20 accent-adinkra-highlight"
-              />
+              <div className="flex items-center gap-1">
+                <Volume2 className="w-5 h-5 text-adinkra-gold" />
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={volume}
+                  onChange={(e) => setVolume(parseFloat(e.target.value))}
+                  className="w-20 accent-adinkra-highlight"
+                />
+              </div>
             </div>
 
-            {/* 📜 Track Selector */}
-            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-2">
+            {/* 📜 Track List */}
+            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-2 scrollbar-hide">
               {filteredTracks.map((track, idx) => (
                 <button
                   key={idx}
                   className={`text-sm text-left truncate p-1 rounded hover:bg-adinkra-highlight/40 transition ${
-                    idx === currentIndex
-                      ? "bg-adinkra-highlight/50 font-semibold"
-                      : ""
+                    idx === currentIndex ? "bg-adinkra-highlight/50 font-semibold" : ""
                   }`}
                   onClick={() => {
                     if (!isAuthenticated)
