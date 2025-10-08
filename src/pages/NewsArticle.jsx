@@ -1,5 +1,5 @@
 // src/pages/NewsArticle.jsx
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
@@ -63,11 +63,28 @@ const options = {
 
 export default function NewsArticle() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [article, setArticle] = useState(null);
   const [likeCount, setLikeCount] = useState(0);
   const [loadingLike, setLoadingLike] = useState(false);
   const [hasFreeAccess, setHasFreeAccess] = useState(false);
   const { isAuthenticated, user, loginWithRedirect } = useAuth0();
+
+  // ✅ Preserve pagination and scroll state
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem("newsScrollPosition");
+    if (savedScroll) {
+      setTimeout(() => window.scrollTo(0, parseInt(savedScroll)), 50);
+    }
+  }, []);
+
+  const handleBack = () => {
+    const lastPage = sessionStorage.getItem("newsLastPage") || "/news";
+    const scrollPosition = window.scrollY;
+    sessionStorage.setItem("newsScrollPosition", scrollPosition.toString());
+    navigate(lastPage);
+  };
 
   useEffect(() => {
     async function fetchArticle() {
@@ -168,7 +185,7 @@ export default function NewsArticle() {
     category,
     date,
     articleType,
-    mediaAssets, // ✅ new field
+    mediaAssets,
   } = article.fields || {};
 
   const coverUrl = coverImage?.fields?.file?.url;
@@ -195,12 +212,12 @@ export default function NewsArticle() {
   return (
     <section className="max-w-4xl mx-auto px-6 py-20 bg-adinkra-bg text-adinkra-gold">
       <div className="mb-6">
-        <Link
-          to="/news"
+        <button
+          onClick={handleBack}
           className="inline-block bg-adinkra-card text-adinkra-highlight px-4 py-2 rounded-full border border-adinkra-highlight hover:bg-adinkra-highlight hover:text-black transition"
         >
           ← Back to News
-        </Link>
+        </button>
       </div>
 
       {coverUrl && (

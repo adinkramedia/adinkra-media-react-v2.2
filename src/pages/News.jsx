@@ -1,4 +1,3 @@
-// src/pages/News.jsx
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
 import Header from "../components/Header";
@@ -9,33 +8,26 @@ import { documentToReactComponents } from "@contentful/rich-text-react-renderer"
 import WaveformPlayer from "../components/WaveformPlayer";
 import { useAuth0 } from "@auth0/auth0-react";
 import AuthButton from "../components/AuthButton";
-import PayPalSubscribeButton from "../components/PayPalSubscribeButton"; // ✅ For R45/month sub
+import PayPalSubscribeButton from "../components/PayPalSubscribeButton";
 
-// ✅ Updated to use Vite env variables
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
   accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
 });
 
 const categories = [
-  "All",
-  "Politics",
-  "Sports",
-  "Business",
-  "Technology",
-  "Cultural",
-  "International Affairs",
-  "Science & Heritage",
-  "Conflict & Humanitarian",
-  "Health",
-  "Crime",
-  "Entertainment",
-  "News",
+  "All", "Politics", "Sports", "Business", "Technology",
+  "Cultural", "International Affairs", "Science & Heritage",
+  "Conflict & Humanitarian", "Health", "Crime", "Entertainment", "News"
 ];
 
-const articleTypes = ["All", "Breaking", "Analysis", "Feature", "Opinion", "News", "Sports", "Deep Feature", "Exclusive Feature"];
-const restrictedTypes = ["Deep Feature", "Opinion", "Analysis", "Exclusive Feature"]; // 🔒 Premium articles
-const loginOnlyTypes = ["News", "Sports", "Feature", "Analysis", "Exclusive Feature", "Deep Feature"]; // 🧑‍💻 Require Auth0 login
+const articleTypes = [
+  "All", "Breaking", "Analysis", "Feature", "Opinion",
+  "News", "Sports", "Deep Feature", "Exclusive Feature"
+];
+
+const restrictedTypes = ["Deep Feature", "Opinion", "Analysis", "Exclusive Feature"];
+const loginOnlyTypes = ["News", "Sports", "Feature", "Analysis", "Exclusive Feature", "Deep Feature"];
 
 function CollapsibleAudioBox({ clip }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -167,15 +159,17 @@ export default function News() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const scrollToSubscribe = () => {
-    document.getElementById("subscribe-section")?.scrollIntoView({ behavior: "smooth" });
+  // ✅ Remember the current page + scroll when opening article
+  const handleReadMore = (articleId) => {
+    sessionStorage.setItem("newsLastPage", `/news?page=${currentPage}`);
+    sessionStorage.setItem("newsScrollPosition", window.scrollY.toString());
+    navigate(`/news-article/${articleId}`);
   };
 
   return (
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen relative">
       <Header />
 
-      {/* 📰 Hero Section */}
       <section className="relative w-full">
         <picture>
           <source media="(min-width: 768px)" srcSet="/news-hero-desktop.jpg" />
@@ -197,88 +191,65 @@ export default function News() {
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-10 space-y-8">
-        {/* 🎧 Africa in a Minute */}
         {africaInAMinuteClip && <CollapsibleAudioBox clip={africaInAMinuteClip} />}
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-6 justify-center">
           <div className="max-w-xs w-full">
-            <label className="block mb-2 font-semibold text-adinkra-highlight">
-              Filter by Category
-            </label>
+            <label className="block mb-2 font-semibold text-adinkra-highlight">Filter by Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full bg-adinkra-card text-adinkra-gold rounded-md px-4 py-2"
             >
               {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
           </div>
 
           <div className="max-w-xs w-full">
-            <label className="block mb-2 font-semibold text-adinkra-highlight">
-              Filter by Article Type
-            </label>
+            <label className="block mb-2 font-semibold text-adinkra-highlight">Filter by Article Type</label>
             <select
               value={selectedArticleType}
               onChange={(e) => setSelectedArticleType(e.target.value)}
               className="w-full bg-adinkra-card text-adinkra-gold rounded-md px-4 py-2"
             >
               {articleTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Sponsor Ad */}
         <SponsorCard />
 
-        {/* 📰 News Grid */}
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           {paginatedArticles.map((post) => {
-            const { coverImage, summaryExcerpt, newsArticle, date, category, articleType } =
-              post.fields;
+            const { coverImage, summaryExcerpt, newsArticle, date, category, articleType } = post.fields;
             const cover = coverImage?.fields?.file?.url;
             const postDate = new Date(date).toLocaleDateString();
             const isRestricted = restrictedTypes.includes(articleType);
             const isLoginOnly = loginOnlyTypes.includes(articleType);
 
             return (
-              <div
-                key={post.sys.id}
-                className="relative bg-adinkra-card rounded-xl border border-adinkra-highlight p-4 shadow-md overflow-hidden"
-              >
+              <div key={post.sys.id} className="relative bg-adinkra-card rounded-xl border border-adinkra-highlight p-4 shadow-md overflow-hidden">
                 {cover && (
-                  <div
-                    className="h-48 bg-cover bg-center rounded mb-4"
-                    style={{ backgroundImage: `url(https:${cover})` }}
-                  />
+                  <div className="h-48 bg-cover bg-center rounded mb-4" style={{ backgroundImage: `url(https:${cover})` }} />
                 )}
                 <h3 className="text-xl font-semibold mb-1">{newsArticle}</h3>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="italic text-adinkra-gold/60">{category}</span>
                   {articleType && (
-                    <span className="px-2 py-0.5 bg-adinkra-highlight/30 text-adinkra-highlight text-xs rounded">
-                      {articleType}
-                    </span>
+                    <span className="px-2 py-0.5 bg-adinkra-highlight/30 text-adinkra-highlight text-xs rounded">{articleType}</span>
                   )}
                 </div>
                 <p className="text-sm text-adinkra-gold/70 mb-2">{postDate}</p>
                 <p className="text-sm text-adinkra-gold/90 mb-4">{summaryExcerpt}</p>
 
-                {/* 🔒 Logic for different article types */}
                 {isLoginOnly && !isAuthenticated ? (
                   <div className="text-center">
-                    <p className="text-sm text-adinkra-gold/70 mb-2">
-                      🔒 Breaking News — Log in to Read
-                    </p>
+                    <p className="text-sm text-adinkra-gold/70 mb-2">🔒 Log in to Read</p>
                     <button
                       onClick={() => loginWithRedirect()}
                       className="px-4 py-2 bg-adinkra-highlight text-black rounded font-semibold"
@@ -287,12 +258,12 @@ export default function News() {
                     </button>
                   </div>
                 ) : (
-                  <Link
-                    to={`/news-article/${post.sys.id}`}
-                    className="inline-block text-adinkra-highlight font-semibold hover:underline"
+                  <button
+                    onClick={() => handleReadMore(post.sys.id)}
+                    className="text-adinkra-highlight font-semibold hover:underline"
                   >
                     {isRestricted ? "Read Preview →" : "Read More →"}
-                  </Link>
+                  </button>
                 )}
               </div>
             );
@@ -302,41 +273,32 @@ export default function News() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center flex-wrap gap-3 mt-10">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50"
-            >
+            <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50">
               ← Previous
             </button>
             {[...Array(totalPages)].map((_, i) => (
               <button
                 key={i}
                 onClick={() => handlePageChange(i + 1)}
-                className={`px-3 py-1.5 rounded ${
-                  i + 1 === currentPage
-                    ? "bg-adinkra-highlight text-adinkra-bg font-semibold"
-                    : "bg-adinkra-card text-adinkra-gold/70 hover:bg-adinkra-highlight/30"
-                }`}
+                className={`px-3 py-1.5 rounded ${i + 1 === currentPage
+                  ? "bg-adinkra-highlight text-adinkra-bg font-semibold"
+                  : "bg-adinkra-card text-adinkra-gold/70 hover:bg-adinkra-highlight/30"}`}
               >
                 {i + 1}
               </button>
             ))}
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50"
-            >
+            <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50">
               Next →
             </button>
           </div>
         )}
 
-        {/* 💳 Subscription Section */}
         <div id="subscribe-section" className="mt-20 text-center">
           <PayPalSubscribeButton />
         </div>
       </section>
+
+     
     </div>
   );
 }
