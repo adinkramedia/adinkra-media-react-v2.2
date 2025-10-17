@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 
 const client = createClient({
   space: process.env.VITE_CONTENTFUL_SPACE_ID,
-  accessToken: process.env.VITE_CONTENTFUL_DELIVERY_TOKEN,
+  accessToken: process.env.VITE_CONTENTFUL_ACCESS_TOKEN,
 });
 
 async function generateRSS() {

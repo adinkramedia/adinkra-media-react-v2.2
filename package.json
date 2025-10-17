@@ -2,11 +2,14 @@
   "name": "adinkra-media",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate:rss && vite build",
+    "build": "npm run generate:rss && npm run generate:sitemap && vite build",
     "preview": "vite preview",
-    "generate:rss": "node scripts/generateRSS.js"
+    "generate:rss": "node scripts/generateRSS.js",
+    "generate:sitemap": "node scripts/generate-sitemap.js",
+    "postbuild": "echo '✅ Build complete. RSS and sitemap generated successfully.'"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
