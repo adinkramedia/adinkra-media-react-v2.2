@@ -1,4 +1,3 @@
-// src/pages/NewsArticle.jsx
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
@@ -8,6 +7,7 @@ import { supabase } from "../lib/supabase";
 import SponsorCard from "../components/SponsorAds";
 import PayPalArticleButton from "../components/PayPalArticleButton";
 import { useAuth0 } from "@auth0/auth0-react";
+import { Helmet, HelmetProvider } from "react-helmet-async"; // ✅ NEW
 
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
@@ -64,14 +64,12 @@ const options = {
 export default function NewsArticle() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [article, setArticle] = useState(null);
   const [likeCount, setLikeCount] = useState(0);
   const [loadingLike, setLoadingLike] = useState(false);
   const [hasFreeAccess, setHasFreeAccess] = useState(false);
   const { isAuthenticated, user, loginWithRedirect } = useAuth0();
 
-  // ✅ Preserve pagination and scroll state
   useEffect(() => {
     const savedScroll = sessionStorage.getItem("newsScrollPosition");
     if (savedScroll) {
@@ -92,9 +90,7 @@ export default function NewsArticle() {
         const entry = await client.getEntry(id);
         setArticle(entry);
         fetchLikes(entry.fields.slug || entry.sys.id);
-        updateMetaTags(entry);
 
-        // ✅ Check free access list
         const freeEmailsRaw = entry.fields.freeAccessEmails || "";
         const emailList = freeEmailsRaw
           .split(/[,;\n]/)
@@ -121,31 +117,6 @@ export default function NewsArticle() {
       .eq("slug", slug)
       .maybeSingle();
     if (data) setLikeCount(data.count || 0);
-  };
-
-  const updateMetaTags = (entry) => {
-    const title = entry.fields.newsArticle;
-    const description = entry.fields.summaryExcerpt || "Adinkra Media article";
-    const image = entry.fields.coverImage?.fields?.file?.url
-      ? `https:${entry.fields.coverImage.fields.file.url}`
-      : "";
-    const fullUrl = `https://adinkramedia.com/news/${entry.sys.id}`;
-
-    const setMeta = (property, content) => {
-      let el = document.querySelector(`meta[property="${property}"]`);
-      if (!el) {
-        el = document.createElement("meta");
-        el.setAttribute("property", property);
-        document.head.appendChild(el);
-      }
-      el.setAttribute("content", content);
-    };
-
-    setMeta("og:title", title);
-    setMeta("og:description", description);
-    setMeta("og:image", image);
-    setMeta("og:url", fullUrl);
-    setMeta("og:type", "article");
   };
 
   const handleLike = async () => {
@@ -188,12 +159,13 @@ export default function NewsArticle() {
     mediaAssets,
   } = article.fields || {};
 
-  const coverUrl = coverImage?.fields?.file?.url;
+  const coverUrl = coverImage?.fields?.file?.url
+    ? `https:${coverImage.fields.file.url}`
+    : "";
+  const fullUrl = `https://adinkramedia.com/news/${article.sys.id}`;
   const isRestricted = restrictedTypes.includes(articleType);
   const isLoginOnly = loginOnlyTypes.includes(articleType);
-  const currentUrl = window.location.href;
 
-  // 🔒 LOGIN-ONLY
   if (isLoginOnly && !isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-adinkra-bg text-adinkra-gold text-center px-6">
@@ -210,156 +182,115 @@ export default function NewsArticle() {
   }
 
   return (
-    <section className="max-w-4xl mx-auto px-6 py-20 bg-adinkra-bg text-adinkra-gold">
-      <div className="mb-6">
-        <button
-          onClick={handleBack}
-          className="inline-block bg-adinkra-card text-adinkra-highlight px-4 py-2 rounded-full border border-adinkra-highlight hover:bg-adinkra-highlight hover:text-black transition"
-        >
-          ← Back to News
-        </button>
-      </div>
+    <HelmetProvider>
+      <Helmet>
+        {/* 🔹 Dynamic Meta for SEO + Social */}
+        <title>{`${newsArticle} | Adinkra Media`}</title>
+        <meta name="description" content={summaryExcerpt || "Adinkra Media Article"} />
+        <meta property="og:title" content={newsArticle} />
+        <meta property="og:description" content={summaryExcerpt || ""} />
+        <meta property="og:image" content={coverUrl} />
+        <meta property="og:url" content={fullUrl} />
+        <meta property="og:type" content="article" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={newsArticle} />
+        <meta name="twitter:description" content={summaryExcerpt || ""} />
+        <meta name="twitter:image" content={coverUrl} />
+      </Helmet>
 
-      {coverUrl && (
-        <img src={`https:${coverUrl}`} alt={newsArticle} className="w-full rounded-lg mb-6" />
-      )}
-
-      <h1 className="text-4xl font-bold mb-2">{newsArticle}</h1>
-      <p className="text-sm text-adinkra-gold/70 mb-6">
-        {author?.fields?.name ? `By ${author.fields.name}` : "By Adinkra Media"} |{" "}
-        {date ? new Date(date).toLocaleDateString() : ""} • {category}
-      </p>
-
-      <SponsorCard />
-
-      {/* 📰 Main Article Body */}
-      {BodyContent && (
-        <div className="prose prose-invert prose-lg text-adinkra-gold max-w-none mb-12">
-          {isRestricted && !hasFreeAccess
-            ? documentToReactComponents(
-                {
-                  nodeType: "document",
-                  content: BodyContent.content.slice(0, 2),
-                },
-                options
-              )
-            : documentToReactComponents(BodyContent, options)}
+      <section className="max-w-4xl mx-auto px-6 py-20 bg-adinkra-bg text-adinkra-gold">
+        <div className="mb-6">
+          <button
+            onClick={handleBack}
+            className="inline-block bg-adinkra-card text-adinkra-highlight px-4 py-2 rounded-full border border-adinkra-highlight hover:bg-adinkra-highlight hover:text-black transition"
+          >
+            ← Back to News
+          </button>
         </div>
-      )}
 
-      {/* 🖼️ Media Assets Gallery */}
-      {mediaAssets?.length > 0 && (
-        <div className="border-t border-adinkra-highlight/30 pt-8 mt-8">
-          <h3 className="text-2xl font-semibold mb-4 text-adinkra-gold">
-            Media Assets
-          </h3>
-          <div className="grid gap-6 md:grid-cols-2">
-            {mediaAssets.map((asset, idx) => {
-              const file = asset.fields?.file;
-              if (!file) return null;
+        {coverUrl && (
+          <img src={coverUrl} alt={newsArticle} className="w-full rounded-lg mb-6" />
+        )}
 
-              const url = `https:${file.url}`;
-              const type = file.contentType;
+        <h1 className="text-4xl font-bold mb-2">{newsArticle}</h1>
+        <p className="text-sm text-adinkra-gold/70 mb-6">
+          {author?.fields?.name ? `By ${author.fields.name}` : "By Adinkra Media"} |{" "}
+          {date ? new Date(date).toLocaleDateString() : ""} • {category}
+        </p>
 
-              if (type.startsWith("image"))
-                return (
-                  <img
-                    key={idx}
-                    src={url}
-                    alt={asset.fields.title || "Media"}
-                    className="rounded-lg shadow-md"
-                  />
-                );
+        <SponsorCard />
 
-              if (type.startsWith("video"))
-                return (
-                  <video
-                    key={idx}
-                    src={url}
-                    controls
-                    className="rounded-lg shadow-md w-full"
-                  />
-                );
+        {BodyContent && (
+          <div className="prose prose-invert prose-lg text-adinkra-gold max-w-none mb-12">
+            {isRestricted && !hasFreeAccess
+              ? documentToReactComponents(
+                  {
+                    nodeType: "document",
+                    content: BodyContent.content.slice(0, 2),
+                  },
+                  options
+                )
+              : documentToReactComponents(BodyContent, options)}
+          </div>
+        )}
 
-              if (type.startsWith("audio"))
-                return (
-                  <audio key={idx} src={url} controls className="w-full" />
-                );
+        {isRestricted && !hasFreeAccess && (
+          <div className="text-center mt-8 border-t border-adinkra-highlight/30 pt-8">
+            <p className="mb-4 text-adinkra-gold/80 text-lg">
+              🔒 This is a premium article. Pay $0.29/R5 once to unlock the full story.
+            </p>
+            <PayPalArticleButton articleTitle={newsArticle} />
+          </div>
+        )}
 
-              return (
-                <a
-                  key={idx}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-adinkra-highlight"
-                >
-                  {asset.fields.title || file.fileName}
-                </a>
-              );
-            })}
+        {/* 👍 Like + Share */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mt-10 border-t border-adinkra-highlight/30 pt-6">
+          <button
+            onClick={handleLike}
+            disabled={loadingLike}
+            className="bg-adinkra-highlight text-black px-4 py-2 rounded-full hover:bg-yellow-400"
+          >
+            {loadingLike ? "Liking..." : `👍 Like (${likeCount})`}
+          </button>
+
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(newsArticle + " - " + fullUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-green-600 px-3 py-1.5 rounded-full text-white text-sm hover:bg-green-700"
+            >
+              WhatsApp
+            </a>
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-blue-600 px-3 py-1.5 rounded-full text-white text-sm hover:bg-blue-700"
+            >
+              Facebook
+            </a>
+            <a
+              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(fullUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-sky-700 px-3 py-1.5 rounded-full text-white text-sm hover:bg-sky-800"
+            >
+              LinkedIn
+            </a>
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                newsArticle
+              )}&url=${encodeURIComponent(fullUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-black px-3 py-1.5 rounded-full text-white text-sm hover:bg-gray-800"
+            >
+              X / Twitter
+            </a>
           </div>
         </div>
-      )}
-
-      {/* 🔒 Paywall */}
-      {isRestricted && !hasFreeAccess && (
-        <div className="text-center mt-8 border-t border-adinkra-highlight/30 pt-8">
-          <p className="mb-4 text-adinkra-gold/80 text-lg">
-            🔒 This is a premium article. Pay $0.29/R5 once to unlock the full story.
-          </p>
-          <PayPalArticleButton articleTitle={newsArticle} />
-        </div>
-      )}
-
-      {/* 👍 Like + Share */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mt-10 border-t border-adinkra-highlight/30 pt-6">
-        <button
-          onClick={handleLike}
-          disabled={loadingLike}
-          className="bg-adinkra-highlight text-black px-4 py-2 rounded-full hover:bg-yellow-400"
-        >
-          {loadingLike ? "Liking..." : `👍 Like (${likeCount})`}
-        </button>
-
-        {/* 🌍 Share */}
-        <div className="flex flex-wrap gap-3">
-          <a
-            href={`https://wa.me/?text=${encodeURIComponent(newsArticle + " - " + currentUrl)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-green-600 px-3 py-1.5 rounded-full text-white text-sm hover:bg-green-700"
-          >
-            WhatsApp
-          </a>
-          <a
-            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-600 px-3 py-1.5 rounded-full text-white text-sm hover:bg-blue-700"
-          >
-            Facebook
-          </a>
-          <a
-            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-sky-700 px-3 py-1.5 rounded-full text-white text-sm hover:bg-sky-800"
-          >
-            LinkedIn
-          </a>
-          <a
-            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-              newsArticle
-            )}&url=${encodeURIComponent(currentUrl)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-black px-3 py-1.5 rounded-full text-white text-sm hover:bg-gray-800"
-          >
-            X / Twitter
-          </a>
-        </div>
-      </div>
-    </section>
+      </section>
+    </HelmetProvider>
   );
 }
