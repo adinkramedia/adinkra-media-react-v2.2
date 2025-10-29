@@ -159,7 +159,6 @@ export default function News() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ Remember the current page + scroll when opening article
   const handleReadMore = (articleId) => {
     sessionStorage.setItem("newsLastPage", `/news?page=${currentPage}`);
     sessionStorage.setItem("newsScrollPosition", window.scrollY.toString());
@@ -170,26 +169,33 @@ export default function News() {
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen relative">
       <Header />
 
-      <section className="relative w-full">
+      {/* ✅ Fully Updated Hero Section (No dark overlay, full-size images) */}
+      <section className="relative w-full overflow-hidden rounded-b-2xl">
         <picture>
+          <source media="(max-width: 767px)" srcSet="/news-hero-mobile.jpg" />
           <source media="(min-width: 768px)" srcSet="/news-hero-desktop.jpg" />
           <img
-            src="/news-hero-mobile.jpg"
-            alt="African Trending News"
-            className="w-full h-[40vh] md:h-[55vh] object-cover"
+            src="/news-hero-desktop.jpg"
+            alt="Adinkra News"
+            className="w-full h-[80vh] md:h-[95vh] object-cover object-center"
           />
         </picture>
-        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center">
-          <h1 className="text-3xl md:text-5xl font-bold text-adinkra-gold drop-shadow-lg">
-            African Trending News
+
+        {/* Optional gentle gradient at the bottom (can remove if not needed) */}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+
+        {/* Hero text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <h1 className="text-4xl md:text-6xl font-bold text-adinkra-gold drop-shadow-xl">
+            Adinkra News
           </h1>
-          <p className="mt-3 text-adinkra-gold/80 text-sm md:text-base px-6 max-w-2xl">
-            The pulse of Africa — breaking stories, in-depth features, and cultural highlights from
-            Adinkra Media.
+          <p className="mt-4 text-adinkra-gold/90 text-sm md:text-lg px-6 max-w-3xl leading-relaxed">
+            The pulse of Africa — breaking stories, deep features, and cultural highlights from Adinkra Media.
           </p>
         </div>
       </section>
 
+      {/* --- Rest of Page --- */}
       <section className="max-w-6xl mx-auto px-6 py-10 space-y-8">
         {africaInAMinuteClip && <CollapsibleAudioBox clip={africaInAMinuteClip} />}
 
@@ -224,6 +230,7 @@ export default function News() {
 
         <SponsorCard />
 
+        {/* Article Grid */}
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           {paginatedArticles.map((post) => {
             const { coverImage, summaryExcerpt, newsArticle, date, category, articleType } = post.fields;
@@ -288,8 +295,7 @@ export default function News() {
               </button>
             ))}
             <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50">
-              Next →
-            </button>
+              Next →</button>
           </div>
         )}
 
