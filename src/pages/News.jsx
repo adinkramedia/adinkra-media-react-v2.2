@@ -9,7 +9,7 @@ import WaveformPlayer from "../components/WaveformPlayer";
 import { useAuth0 } from "@auth0/auth0-react";
 import AuthButton from "../components/AuthButton";
 import PayPalSubscribeButton from "../components/PayPalSubscribeButton";
-import AdsterraEmbed from "../components/AdsterraEmbed";
+import AdsterraEmbed from "../components/AdsterraEmbed"; // ✅ correct new component
 
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
@@ -170,7 +170,7 @@ export default function News() {
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen relative">
       <Header />
 
-      {/* === Hero === */}
+      {/* Hero Section */}
       <section className="relative w-full overflow-hidden rounded-b-2xl">
         <picture>
           <source media="(max-width: 767px)" srcSet="/news-hero-mobile.jpg" />
@@ -181,7 +181,9 @@ export default function News() {
             className="w-full h-[80vh] md:h-[95vh] object-cover object-center"
           />
         </picture>
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-adinkra-gold drop-shadow-xl">
             Adinkra News
@@ -192,23 +194,43 @@ export default function News() {
         </div>
       </section>
 
-      {/* === Top Ads === */}
-      <div className="max-w-6xl mx-auto px-6 mt-10 space-y-6">
+      {/* ✅ Ads directly after hero */}
+      <div className="max-w-6xl mx-auto px-6 mt-10 space-y-4">
+        {/* Desktop 728x90 */}
         <div className="hidden md:flex justify-center">
-          <AdsterraEmbed adKey="825faa72504bd8a6ee1bac5b8cd098af" width={728} height={90} />
+          <AdsterraEmbed
+            htmlCode={`<script type="text/javascript">
+              atOptions = {
+                'key' : '825faa72504bd8a6ee1bac5b8cd098af',
+                'format' : 'iframe',
+                'height' : 90,
+                'width' : 728,
+                'params' : {}
+              };
+            </script>
+            <script type="text/javascript" src="//pineegypt.com/825faa72504bd8a6ee1bac5b8cd098af/invoke.js"></script>`}
+          />
         </div>
+
+        {/* Mobile 320x50 */}
         <div className="flex md:hidden justify-center">
-          <AdsterraEmbed adKey="f58bb7dacd9d77f1bcea231e9e2052b5" width={320} height={50} />
+          <AdsterraEmbed
+            htmlCode={`<script type="text/javascript">
+              atOptions = {
+                'key' : 'f58bb7dacd9d77f1bcea231e9e2052b5',
+                'format' : 'iframe',
+                'height' : 50,
+                'width' : 320,
+                'params' : {}
+              };
+            </script>
+            <script type="text/javascript" src="//pineegypt.com/f58bb7dacd9d77f1bcea231e9e2052b5/invoke.js"></script>`}
+          />
         </div>
       </div>
 
-      {/* === Main === */}
-      <section className="max-w-6xl mx-auto px-6 py-10 space-y-10 relative">
-        {/* Sidebar ad for desktop */}
-        <div className="hidden lg:block absolute right-0 top-40">
-          <AdsterraEmbed adKey="c3f61289b3cda0ec1a125e7a15d941b9" width={160} height={600} />
-        </div>
-
+      {/* === Main Content === */}
+      <section className="max-w-6xl mx-auto px-6 py-10 space-y-8">
         {africaInAMinuteClip && <CollapsibleAudioBox clip={africaInAMinuteClip} />}
 
         {/* Filters */}
@@ -242,11 +264,6 @@ export default function News() {
 
         <SponsorCard />
 
-        {/* Mid-page Ad */}
-        <div className="flex justify-center my-8">
-          <AdsterraEmbed adKey="a298f58fd2749e1a84b4deecb8a1eeb3" width={300} height={250} />
-        </div>
-
         {/* Articles Grid */}
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           {paginatedArticles.map((post) => {
@@ -257,7 +274,10 @@ export default function News() {
             const isLoginOnly = loginOnlyTypes.includes(articleType);
 
             return (
-              <div key={post.sys.id} className="relative bg-adinkra-card rounded-xl border border-adinkra-highlight p-4 shadow-md overflow-hidden">
+              <div
+                key={post.sys.id}
+                className="relative bg-adinkra-card rounded-xl border border-adinkra-highlight p-4 shadow-md overflow-hidden"
+              >
                 {cover && (
                   <div
                     className="h-48 bg-cover bg-center rounded mb-4"
@@ -299,11 +319,6 @@ export default function News() {
           })}
         </div>
 
-        {/* Inline ad after grid */}
-        <div className="flex justify-center mt-12">
-          <AdsterraEmbed adKey="b52e627e4eb7e7f56f4e92a8b2bb563e" width={336} height={280} />
-        </div>
-
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center flex-wrap gap-3 mt-10">
@@ -337,22 +352,47 @@ export default function News() {
           </div>
         )}
 
-        {/* Bottom Ads */}
-        <div className="flex flex-col items-center space-y-4 mt-16">
-          <div className="hidden md:block">
-            <AdsterraEmbed adKey="dc7f5b8c67215c232e41e7b3172fcb35" width={468} height={60} />
-          </div>
-          <div className="block md:hidden">
-            <AdsterraEmbed adKey="e8a9bc2af416d1c4c7eeaf7776c9d098" width={300} height={100} />
-          </div>
-        </div>
-
         <div id="subscribe-section" className="mt-20 text-center">
           <PayPalSubscribeButton />
         </div>
       </section>
 
-      
+      {/* Top Banner Ad */}
+<div className="max-w-6xl mx-auto px-6 mt-10 flex flex-col items-center">
+  {/* Desktop Banner */}
+  <div className="hidden md:block">
+    <AdsterraEmbed
+      htmlCode={`<script type="text/javascript">
+        atOptions = {
+          'key' : '825faa72504bd8a6ee1bac5b8cd098af',
+          'format' : 'iframe',
+          'height' : 90,
+          'width' : 728,
+          'params' : {}
+        };
+      </script>
+      <script type="text/javascript" src="//pineegypt.com/825faa72504bd8a6ee1bac5b8cd098af/invoke.js"></script>`}
+    />
+  </div>
+
+  {/* Mobile Banner */}
+  <div className="block md:hidden">
+    <AdsterraEmbed
+      htmlCode={`<script type="text/javascript">
+        atOptions = {
+          'key' : 'f58bb7dacd9d77f1bcea231e9e2052b5',
+          'format' : 'iframe',
+          'height' : 50,
+          'width' : 320,
+          'params' : {}
+        };
+      </script>
+      <script type="text/javascript" src="//pineegypt.com/f58bb7dacd9d77f1bcea231e9e2052b5/invoke.js"></script>`}
+    />
+  </div>
+</div>
+
+     
     </div>
   );
 }
