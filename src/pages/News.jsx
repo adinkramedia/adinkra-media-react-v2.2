@@ -9,6 +9,7 @@ import WaveformPlayer from "../components/WaveformPlayer";
 import { useAuth0 } from "@auth0/auth0-react";
 import AuthButton from "../components/AuthButton";
 import PayPalSubscribeButton from "../components/PayPalSubscribeButton";
+import AdsterraEmbed from "../components/AdsterraEmbed"; // ✅ correct new component
 
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
@@ -169,7 +170,7 @@ export default function News() {
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen relative">
       <Header />
 
-      {/* ✅ Fully Updated Hero Section (No dark overlay, full-size images) */}
+      {/* Hero Section */}
       <section className="relative w-full overflow-hidden rounded-b-2xl">
         <picture>
           <source media="(max-width: 767px)" srcSet="/news-hero-mobile.jpg" />
@@ -181,10 +182,8 @@ export default function News() {
           />
         </picture>
 
-        {/* Optional gentle gradient at the bottom (can remove if not needed) */}
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
 
-        {/* Hero text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-adinkra-gold drop-shadow-xl">
             Adinkra News
@@ -195,7 +194,42 @@ export default function News() {
         </div>
       </section>
 
-      {/* --- Rest of Page --- */}
+      {/* ✅ Ads directly after hero */}
+      <div className="max-w-6xl mx-auto px-6 mt-10 space-y-4">
+        {/* Desktop 728x90 */}
+        <div className="hidden md:flex justify-center">
+          <AdsterraEmbed
+            htmlCode={`<script type="text/javascript">
+              atOptions = {
+                'key' : '825faa72504bd8a6ee1bac5b8cd098af',
+                'format' : 'iframe',
+                'height' : 90,
+                'width' : 728,
+                'params' : {}
+              };
+            </script>
+            <script type="text/javascript" src="//pineegypt.com/825faa72504bd8a6ee1bac5b8cd098af/invoke.js"></script>`}
+          />
+        </div>
+
+        {/* Mobile 320x50 */}
+        <div className="flex md:hidden justify-center">
+          <AdsterraEmbed
+            htmlCode={`<script type="text/javascript">
+              atOptions = {
+                'key' : 'f58bb7dacd9d77f1bcea231e9e2052b5',
+                'format' : 'iframe',
+                'height' : 50,
+                'width' : 320,
+                'params' : {}
+              };
+            </script>
+            <script type="text/javascript" src="//pineegypt.com/f58bb7dacd9d77f1bcea231e9e2052b5/invoke.js"></script>`}
+          />
+        </div>
+      </div>
+
+      {/* === Main Content === */}
       <section className="max-w-6xl mx-auto px-6 py-10 space-y-8">
         {africaInAMinuteClip && <CollapsibleAudioBox clip={africaInAMinuteClip} />}
 
@@ -230,7 +264,7 @@ export default function News() {
 
         <SponsorCard />
 
-        {/* Article Grid */}
+        {/* Articles Grid */}
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           {paginatedArticles.map((post) => {
             const { coverImage, summaryExcerpt, newsArticle, date, category, articleType } = post.fields;
@@ -240,15 +274,23 @@ export default function News() {
             const isLoginOnly = loginOnlyTypes.includes(articleType);
 
             return (
-              <div key={post.sys.id} className="relative bg-adinkra-card rounded-xl border border-adinkra-highlight p-4 shadow-md overflow-hidden">
+              <div
+                key={post.sys.id}
+                className="relative bg-adinkra-card rounded-xl border border-adinkra-highlight p-4 shadow-md overflow-hidden"
+              >
                 {cover && (
-                  <div className="h-48 bg-cover bg-center rounded mb-4" style={{ backgroundImage: `url(https:${cover})` }} />
+                  <div
+                    className="h-48 bg-cover bg-center rounded mb-4"
+                    style={{ backgroundImage: `url(https:${cover})` }}
+                  />
                 )}
                 <h3 className="text-xl font-semibold mb-1">{newsArticle}</h3>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="italic text-adinkra-gold/60">{category}</span>
                   {articleType && (
-                    <span className="px-2 py-0.5 bg-adinkra-highlight/30 text-adinkra-highlight text-xs rounded">{articleType}</span>
+                    <span className="px-2 py-0.5 bg-adinkra-highlight/30 text-adinkra-highlight text-xs rounded">
+                      {articleType}
+                    </span>
                   )}
                 </div>
                 <p className="text-sm text-adinkra-gold/70 mb-2">{postDate}</p>
@@ -280,22 +322,33 @@ export default function News() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center flex-wrap gap-3 mt-10">
-            <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50"
+            >
               ← Previous
             </button>
             {[...Array(totalPages)].map((_, i) => (
               <button
                 key={i}
                 onClick={() => handlePageChange(i + 1)}
-                className={`px-3 py-1.5 rounded ${i + 1 === currentPage
-                  ? "bg-adinkra-highlight text-adinkra-bg font-semibold"
-                  : "bg-adinkra-card text-adinkra-gold/70 hover:bg-adinkra-highlight/30"}`}
+                className={`px-3 py-1.5 rounded ${
+                  i + 1 === currentPage
+                    ? "bg-adinkra-highlight text-adinkra-bg font-semibold"
+                    : "bg-adinkra-card text-adinkra-gold/70 hover:bg-adinkra-highlight/30"
+                }`}
               >
                 {i + 1}
               </button>
             ))}
-            <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50">
-              Next →</button>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-adinkra-highlight text-adinkra-bg rounded disabled:opacity-50"
+            >
+              Next →
+            </button>
           </div>
         )}
 
@@ -303,6 +356,41 @@ export default function News() {
           <PayPalSubscribeButton />
         </div>
       </section>
+
+      {/* Top Banner Ad */}
+<div className="max-w-6xl mx-auto px-6 mt-10 flex flex-col items-center">
+  {/* Desktop Banner */}
+  <div className="hidden md:block">
+    <AdsterraEmbed
+      htmlCode={`<script type="text/javascript">
+        atOptions = {
+          'key' : '825faa72504bd8a6ee1bac5b8cd098af',
+          'format' : 'iframe',
+          'height' : 90,
+          'width' : 728,
+          'params' : {}
+        };
+      </script>
+      <script type="text/javascript" src="//pineegypt.com/825faa72504bd8a6ee1bac5b8cd098af/invoke.js"></script>`}
+    />
+  </div>
+
+  {/* Mobile Banner */}
+  <div className="block md:hidden">
+    <AdsterraEmbed
+      htmlCode={`<script type="text/javascript">
+        atOptions = {
+          'key' : 'f58bb7dacd9d77f1bcea231e9e2052b5',
+          'format' : 'iframe',
+          'height' : 50,
+          'width' : 320,
+          'params' : {}
+        };
+      </script>
+      <script type="text/javascript" src="//pineegypt.com/f58bb7dacd9d77f1bcea231e9e2052b5/invoke.js"></script>`}
+    />
+  </div>
+</div>
 
      
     </div>
