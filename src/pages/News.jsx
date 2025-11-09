@@ -1,3 +1,4 @@
+// ✅ src/pages/News.jsx
 import { useEffect, useState } from "react";
 import { createClient } from "contentful";
 import Header from "../components/Header";
@@ -9,7 +10,7 @@ import WaveformPlayer from "../components/WaveformPlayer";
 import { useAuth0 } from "@auth0/auth0-react";
 import AuthButton from "../components/AuthButton";
 import PayPalSubscribeButton from "../components/PayPalSubscribeButton";
-import AdsterraEmbed from "../components/AdsterraEmbed"; // ✅ correct new component
+import AdsterraEmbed from "../components/AdsterraEmbed"; // ✅ Native Ad component
 
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
@@ -38,7 +39,7 @@ function CollapsibleAudioBox({ clip }) {
 
   return (
     <div className="max-w-xl mx-auto relative">
-      {!isOpen && (
+      {!isOpen ? (
         <button
           onClick={() => setIsOpen(true)}
           className="w-full cursor-pointer rounded-lg bg-adinkra-highlight/20 border border-adinkra-highlight text-adinkra-highlight px-6 py-4 flex items-center justify-between hover:bg-adinkra-highlight/40 transition"
@@ -46,9 +47,7 @@ function CollapsibleAudioBox({ clip }) {
           <span className="font-semibold text-lg truncate">{title}</span>
           <span className="text-2xl leading-none">▶</span>
         </button>
-      )}
-
-      {isOpen && (
+      ) : (
         <div className="bg-adinkra-card rounded-lg border border-adinkra-highlight p-6 shadow-md relative overflow-hidden">
           <button
             onClick={() => setIsOpen(false)}
@@ -120,9 +119,7 @@ export default function News() {
   }
 
   useEffect(() => {
-    fetchAllNews()
-      .then((items) => setArticles(items))
-      .catch(console.error);
+    fetchAllNews().then(setArticles).catch(console.error);
 
     client
       .getEntries({
@@ -130,22 +127,18 @@ export default function News() {
         order: "-fields.date",
         limit: 1,
       })
-      .then((res) => {
-        if (res.items.length > 0) setAfricaInAMinuteClip(res.items[0]);
-      })
+      .then((res) => res.items.length && setAfricaInAMinuteClip(res.items[0]))
       .catch(console.error);
   }, []);
 
   const filteredArticles = articles.filter((post) => {
     const categoryMatch =
       selectedCategory === "All" ||
-      (post.fields.category &&
-        post.fields.category.toLowerCase() === selectedCategory.toLowerCase());
-    const articleTypeMatch =
+      post.fields.category?.toLowerCase() === selectedCategory.toLowerCase();
+    const typeMatch =
       selectedArticleType === "All" ||
-      (post.fields.articleType &&
-        post.fields.articleType.toLowerCase() === selectedArticleType.toLowerCase());
-    return categoryMatch && articleTypeMatch;
+      post.fields.articleType?.toLowerCase() === selectedArticleType.toLowerCase();
+    return categoryMatch && typeMatch;
   });
 
   const totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
@@ -170,7 +163,7 @@ export default function News() {
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen relative">
       <Header />
 
-      {/* Hero Section */}
+      {/* === Hero Section === */}
       <section className="relative w-full overflow-hidden rounded-b-2xl">
         <picture>
           <source media="(max-width: 767px)" srcSet="/news-hero-mobile.jpg" />
@@ -194,10 +187,10 @@ export default function News() {
         </div>
       </section>
 
-      {/* ✅ Ads directly after hero */}
-      <div className="max-w-6xl mx-auto px-6 mt-10 space-y-4">
+      {/* ✅ Native Ad Banner Below Hero */}
+      <div className="max-w-6xl mx-auto px-6 mt-8 flex flex-col items-center">
         {/* Desktop 728x90 */}
-        <div className="hidden md:flex justify-center">
+        <div className="hidden md:block">
           <AdsterraEmbed
             htmlCode={`<script type="text/javascript">
               atOptions = {
@@ -213,7 +206,7 @@ export default function News() {
         </div>
 
         {/* Mobile 320x50 */}
-        <div className="flex md:hidden justify-center">
+        <div className="block md:hidden">
           <AdsterraEmbed
             htmlCode={`<script type="text/javascript">
               atOptions = {
@@ -352,47 +345,13 @@ export default function News() {
           </div>
         )}
 
+        {/* Subscription Section */}
         <div id="subscribe-section" className="mt-20 text-center">
           <PayPalSubscribeButton />
         </div>
       </section>
 
-      {/* Top Banner Ad */}
-<div className="max-w-6xl mx-auto px-6 mt-10 flex flex-col items-center">
-  {/* Desktop Banner */}
-  <div className="hidden md:block">
-    <AdsterraEmbed
-      htmlCode={`<script type="text/javascript">
-        atOptions = {
-          'key' : '825faa72504bd8a6ee1bac5b8cd098af',
-          'format' : 'iframe',
-          'height' : 90,
-          'width' : 728,
-          'params' : {}
-        };
-      </script>
-      <script type="text/javascript" src="//pineegypt.com/825faa72504bd8a6ee1bac5b8cd098af/invoke.js"></script>`}
-    />
-  </div>
-
-  {/* Mobile Banner */}
-  <div className="block md:hidden">
-    <AdsterraEmbed
-      htmlCode={`<script type="text/javascript">
-        atOptions = {
-          'key' : 'f58bb7dacd9d77f1bcea231e9e2052b5',
-          'format' : 'iframe',
-          'height' : 50,
-          'width' : 320,
-          'params' : {}
-        };
-      </script>
-      <script type="text/javascript" src="//pineegypt.com/f58bb7dacd9d77f1bcea231e9e2052b5/invoke.js"></script>`}
-    />
-  </div>
-</div>
-
-     
+    
     </div>
   );
 }
