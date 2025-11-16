@@ -1,4 +1,4 @@
-# Route bots to Prerender
+# Route bot traffic to Prerender.io
 /* https://service.prerender.io/:splat 200! User-Agent=googlebot|bingbot|Yahoo! Slurp|facebookexternalhit|twitterbot|linkedinbot|Whatsapp|WhatsApp|SkypeUriPreview|Slackbot-LinkExpanding
 
 # React SPA fallback
