@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate:rss && npm run generate:sitemap && vite build",
+    "build": "npm run generate:rss && npm run generate:sitemap && vite build && node scripts/generate-static-articles.js",
     "preview": "vite preview",
     "generate:rss": "node scripts/generateRSS.js",
     "generate:sitemap": "node scripts/generate-sitemap.js",
-    "postbuild": "echo '✅ Build complete. RSS and sitemap generated successfully.'"
+    "generate:static": "node scripts/generate-static-articles.js",
+    "postbuild": "echo '✅ Build complete. RSS, sitemap, and static article pages generated successfully.'"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
