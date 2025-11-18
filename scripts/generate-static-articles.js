@@ -90,7 +90,9 @@ async function generateStaticPages() {
         const slug = item.fields.slug;
         if (!slug) continue;
 
-        // Determine title & summary based on content type
+        // --------------------------
+        // Determine title & summary
+        // --------------------------
         let title = "Untitled";
         let summary = "Read this article on Adinkra Media.";
 
@@ -99,7 +101,7 @@ async function generateStaticPages() {
           summary = item.fields.summaryExcerpt || summary;
         } else if (model.id === "houseOfAusar") {
           title = item.fields.title || title;
-          summary = item.fields.summaryExcerpt || summary;
+          summary = item.fields.excerpt || summary; // ✅ Correct field mapping
         }
 
         // Fallback: use first 150 chars of bodyContent if summary missing
@@ -108,18 +110,25 @@ async function generateStaticPages() {
           summary = item.fields.bodyContent.content[0].content[0].value.slice(0, 150);
         }
 
+        // --------------------------
         // OG image fallback
+        // --------------------------
         const image =
           item.fields.coverImage?.fields?.file?.url
             ? "https:" + item.fields.coverImage.fields.file.url
             : "https://adinkramedia.com/default-og.jpg";
 
-        // ✅ Debug logging for title and summary
+        // --------------------------
+        // Debug logs
+        // --------------------------
         console.log(`🔹 Generating page for slug: ${slug}`);
         console.log(`   Title: "${title}"`);
         console.log(`   Summary: "${summary}"`);
         console.log(`   Image: "${image}"`);
 
+        // --------------------------
+        // Generate HTML
+        // --------------------------
         const html = generateHTML({ title, summary, image, slug, type: model.path });
 
         const articleDir = path.join(OUTPUT_DIR, model.path, slug);
