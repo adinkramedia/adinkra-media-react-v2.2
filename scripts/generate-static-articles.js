@@ -60,45 +60,42 @@ async function generateStaticPages() {
     console.log(`📌 Rendering ${entries.items.length} pages for ${model.id}...`);
 
     for (const item of entries.items) {
-      const slug = item.fields.slug;
+      const slug = item.fields.slug?.['en-US'] || item.fields.slug || "";
       if (!slug) continue;
 
-      // --- Determine title ---
+      // --- Title ---
       let title = "";
       if (model.id === "africanTrendingNews") {
-        title = item.fields["newsArticle"] || ""; // exact API field key
+        title = item.fields.newsArticle?.['en-US'] || item.fields.newsArticle || "";
       } else if (model.id === "houseOfAusar") {
-        title = item.fields["title"] || "";
+        title = item.fields.title?.['en-US'] || item.fields.title || "";
       }
       if (!title) title = "Untitled";
 
-      // --- Determine summary ---
+      // --- Summary ---
       let summary = "";
       if (model.id === "africanTrendingNews") {
-        summary = item.fields["summaryExcerpt"] || "";
+        summary = item.fields.summaryExcerpt?.['en-US'] || item.fields.summaryExcerpt || "";
       } else if (model.id === "houseOfAusar") {
-        summary = item.fields["excerpt"] || "";
+        summary = item.fields.excerpt?.['en-US'] || item.fields.excerpt || "";
       }
 
-      // fallback: take first text from bodyContent
-      if (!summary && item.fields.bodyContent?.content?.length) {
-        const block = item.fields.bodyContent.content.find(
-          (b) => b.content?.length
-        );
-        if (block) summary = block.content.map((c) => c.value).join(" ").slice(0, 150);
+      // --- Fallback from bodyContent ---
+      if (!summary && item.fields.bodyContent?.['en-US']?.content?.length) {
+        const block = item.fields.bodyContent['en-US'].content.find(b => b.content?.length);
+        if (block) summary = block.content.map(c => c.value).join(" ").slice(0, 150);
       }
       if (!summary) summary = "Read this article on Adinkra Media.";
 
       // --- OG Image ---
-      const image =
-        item.fields.coverImage?.fields?.file?.url
-          ? "https:" + item.fields.coverImage.fields.file.url
-          : "https://adinkramedia.com/default-og.jpg";
+      const image = item.fields.coverImage?.fields?.file?.url
+        ? "https:" + item.fields.coverImage.fields.file.url
+        : "https://adinkramedia.com/default-og.jpg";
 
       // --- Debug log ---
       console.log(`Generating: slug=${slug}, title="${title}", summary="${summary}"`);
 
-      // --- Write HTML ---
+      // --- Generate HTML ---
       const html = generateHTML({ title, summary, image, slug, type: model.path });
       const articleDir = path.join(OUTPUT_DIR, model.path, slug);
       const articleFile = path.join(articleDir, "index.html");
