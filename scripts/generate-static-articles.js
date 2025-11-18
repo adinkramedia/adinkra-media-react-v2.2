@@ -29,7 +29,7 @@ function ensureDir(dir) {
 }
 
 // --------------------------
-// 🔥 TEMPLATE FOR STATIC HTML
+// 🔥 STATIC HTML TEMPLATE
 // --------------------------
 function generateHTML({ title, description, image, slug, type }) {
   const pageUrl = `https://adinkramedia.com/${type}/${slug}`;
@@ -75,45 +75,56 @@ function generateHTML({ title, description, image, slug, type }) {
 async function generateStaticPages() {
   console.log("🔍 Fetching Contentful entries...");
 
+  // Correct Contentful API IDs
   const TYPES = [
-    { id: "newsArticle", path: "news" },
-    { id: "houseArticle", path: "house-of-ausar" },
-    { id: "sacredArticle", path: "sacred-and-sovereign" }
+    { id: "africanTrendingNews", path: "news" },
+    { id: "houseOfAusar", path: "house-of-ausar" }
   ];
 
   for (const model of TYPES) {
-    const entries = await client.getEntries({ content_type: model.id });
+    try {
+      const entries = await client.getEntries({ content_type: model.id });
 
-    console.log(`📌 Rendering ${entries.items.length} ${model.id} pages...`);
+      console.log(`📌 Rendering ${entries.items.length} ${model.id} pages...`);
 
-    for (const item of entries.items) {
-      const title = item.fields.title || "Untitled";
-      const slug = item.fields.slug;
-      const summary = item.fields.summaryExcerpt || "Read this article on Adinkra Media.";
-      const image = item.fields.coverImage?.fields?.file?.url
-        ? "https:" + item.fields.coverImage.fields.file.url
-        : "https://adinkramedia.com/default-og.jpg";
+      for (const item of entries.items) {
+        const title = item.fields.title || "Untitled";
+        const slug = item.fields.slug;
+        if (!slug) continue;
 
-      const html = generateHTML({
-        title,
-        description: summary,
-        image,
-        slug,
-        type: model.path
-      });
+        const summary =
+          item.fields.summaryExcerpt ||
+          "Read this article on Adinkra Media.";
 
-      const articleDir = path.join(OUTPUT_DIR, model.path, slug);
-      const articleFile = path.join(articleDir, "index.html");
+        const image = item.fields.coverImage?.fields?.file?.url
+          ? "https:" + item.fields.coverImage.fields.file.url
+          : "https://adinkramedia.com/default-og.jpg";
 
-      ensureDir(articleDir);
-      fs.writeFileSync(articleFile, html);
+        const html = generateHTML({
+          title,
+          description: summary,
+          image,
+          slug,
+          type: model.path
+        });
 
-      console.log(`✅ Static page generated: /static/${model.path}/${slug}/index.html`);
+        const articleDir = path.join(OUTPUT_DIR, model.path, slug);
+        const articleFile = path.join(articleDir, "index.html");
+
+        ensureDir(articleDir);
+        fs.writeFileSync(articleFile, html);
+
+        console.log(
+          `✅ Static page generated: /static/${model.path}/${slug}/index.html`
+        );
+      }
+    } catch (err) {
+      console.log(`❌ ERROR fetching ${model.id}`);
+      console.error(err.message);
     }
   }
 
   console.log("🎉 ALL STATIC PAGES GENERATED SUCCESSFULLY!");
 }
 
-// --------------------------
 generateStaticPages().catch(console.error);

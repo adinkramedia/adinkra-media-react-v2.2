@@ -1,7 +1,6 @@
-# Serve STATIC SSG pages for articles
-/news/:slug  /static/news/:slug/index.html  200
-/house-of-ausar/:slug  /static/house-of-ausar/:slug/index.html  200
-/sacred-and-sovereign/:slug  /static/sacred-and-sovereign/:slug/index.html  200
+# Serve STATIC SSG pages
+/news/:slug    /static/news/:slug/index.html    200
+/house-of-ausar/:slug    /static/house-of-ausar/:slug/index.html    200
 
-# React SPA fallback for all other routes
-/*   /index.html   200
+# React SPA fallback
+/*    /index.html   200
