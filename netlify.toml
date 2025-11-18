@@ -1,25 +1,39 @@
-[functions] 
+# ==========================
+# FUNCTIONS
+# ==========================
+[functions]
   directory = "netlify/functions"
+
+# ==========================
+# BUILD SETTINGS
+# ==========================
 [build]
   publish = "dist"
   command = "npm run build"
 
-[functions]
-  directory = "netlify/functions"
-
-# ---------------------------
-# PRERENDER.IO BOT REDIRECT
-# ---------------------------
+# ==========================
+# PRERENDER BOT ROUTING
+# ==========================
 [[redirects]]
   from = "/*"
   to = "https://service.prerender.io/:splat"
   status = 200
-  force = true
-  conditions = {UserAgent = ["googlebot", "bingbot", "Yahoo! Slurp", "facebookexternalhit", "twitterbot", "linkedinbot", "Whatsapp", "WhatsApp", "SkypeUriPreview", "Slackbot-LinkExpanding"]}
+  conditions = { UserAgent = [
+    "googlebot",
+    "bingbot",
+    "Yahoo! Slurp",
+    "facebookexternalhit",
+    "twitterbot",
+    "linkedinbot",
+    "Whatsapp",
+    "WhatsApp",
+    "SkypeUriPreview",
+    "Slackbot-LinkExpanding"
+  ]}
 
-# ---------------------------
+# ==========================
 # STATIC SSG ROUTES
-# ---------------------------
+# ==========================
 [[redirects]]
   from = "/news/:slug"
   to = "/static/news/:slug/index.html"
@@ -30,11 +44,9 @@
   to = "/static/house-of-ausar/:slug/index.html"
   status = 200
 
-# Sacred & Sovereign removed → DO NOT include redirect
-
-# ---------------------------
-# SPA FALLBACK
-# ---------------------------
+# ==========================
+# SPA FALLBACK (last)
+# ==========================
 [[redirects]]
   from = "/*"
   to = "/index.html"
