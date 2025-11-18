@@ -51,8 +51,18 @@ function generateHTML({ title, summary, image, slug, type }) {
 
 async function generateStaticPages() {
   const TYPES = [
-    { id: "africanTrendingNews", path: "news" },
-    { id: "houseOfAusar", path: "house-of-ausar" },
+    {
+      id: "africanTrendingNews",
+      path: "news",
+      titleField: "newsArticle",       // exact API ID
+      summaryField: "summaryexcerpt",  // exact API ID (lowercase e)
+    },
+    {
+      id: "houseOfAusar",
+      path: "house-of-ausar",
+      titleField: "title",
+      summaryField: "excerpt",
+    },
   ];
 
   for (const model of TYPES) {
@@ -60,29 +70,16 @@ async function generateStaticPages() {
     console.log(`📌 Rendering ${entries.items.length} pages for ${model.id}...`);
 
     for (const item of entries.items) {
-      const slug = item.fields.slug?.['en-US'] || item.fields.slug || "";
+      const slug = item.fields.slug || "";
       if (!slug) continue;
 
       // Title
-      let title = "";
-      if (model.id === "africanTrendingNews") {
-        title = item.fields.newsArticle?.['en-US'] || "";
-      } else if (model.id === "houseOfAusar") {
-        title = item.fields.title?.['en-US'] || "";
-      }
-      if (!title) title = "Untitled";
+      let title = item.fields[model.titleField] || "Untitled";
 
       // Summary
-      let summary = "";
-      if (model.id === "africanTrendingNews") {
-        summary = item.fields.summaryExcerpt?.['en-US'] || "";
-      } else if (model.id === "houseOfAusar") {
-        summary = item.fields.excerpt?.['en-US'] || "";
-      }
-
-      // fallback from bodyContent
-      if (!summary && item.fields.bodyContent?.['en-US']?.content?.length) {
-        const block = item.fields.bodyContent['en-US'].content.find(b => b.content?.length);
+      let summary = item.fields[model.summaryField] || "";
+      if (!summary && item.fields.bodyContent?.content?.length) {
+        const block = item.fields.bodyContent.content.find(b => b.content?.length);
         if (block) summary = block.content.map(c => c.value).join(" ").slice(0, 150);
       }
       if (!summary) summary = "Read this article on Adinkra Media.";
@@ -92,7 +89,7 @@ async function generateStaticPages() {
         ? "https:" + item.fields.coverImage.fields.file.url
         : "https://adinkramedia.com/default-og.jpg";
 
-      console.log(`Generating: slug=${slug}, title="${title}"`);
+      console.log(`✅ Generating: slug=${slug}, title="${title}"`);
 
       const html = generateHTML({ title, summary, image, slug, type: model.path });
       const articleDir = path.join(OUTPUT_DIR, model.path, slug);
