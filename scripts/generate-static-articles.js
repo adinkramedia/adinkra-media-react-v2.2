@@ -61,12 +61,9 @@ function generateHTML({ title, description, image, slug, type }) {
 <body>
   <div style="font-family: sans-serif; padding: 40px;">
     <h1>${title}</h1>
-    <p>This is a static preview page. The full interactive version loads when users visit normally.</p>
+    <p>This is a static metadata page used for social sharing.</p>
+    <p><a href="${pageUrl}" style="color: blue;">Click here to read the full article.</a></p>
   </div>
-
-  <script>
-    window.location.href = "${pageUrl}";
-  </script>
 </body>
 </html>
 `;
