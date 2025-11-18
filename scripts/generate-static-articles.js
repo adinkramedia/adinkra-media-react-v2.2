@@ -9,143 +9,105 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --------------------------
-// 🔥 CONTENTFUL CLIENT
-// --------------------------
 const client = createClient({
   space: process.env.VITE_CONTENTFUL_SPACE_ID,
   accessToken: process.env.VITE_CONTENTFUL_ACCESS_TOKEN,
 });
 
-// --------------------------
-// 🔥 OUTPUT DIRECTORY
-// --------------------------
 const OUTPUT_DIR = path.join(__dirname, "..", "dist", "static");
 
 function ensureDir(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-// --------------------------
-// 🔥 STATIC HTML TEMPLATE
-// --------------------------
 function generateHTML({ title, summary, image, slug, type }) {
   const pageUrl = `https://adinkramedia.com/${type}/${slug}`;
-  const ogImage = image || "https://adinkramedia.com/default-og.jpg";
-  const pageTitle = title || "Untitled";
-  const pageSummary = summary || "Read this article on Adinkra Media.";
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-<title>${pageTitle}</title>
-<meta name="description" content="${pageSummary}" />
-
-<!-- Open Graph -->
-<meta property="og:title" content="${pageTitle}" />
-<meta property="og:description" content="${pageSummary}" />
-<meta property="og:image" content="${ogImage}" />
+<title>${title}</title>
+<meta name="description" content="${summary}" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${summary}" />
+<meta property="og:image" content="${image}" />
 <meta property="og:url" content="${pageUrl}" />
 <meta property="og:type" content="article" />
-
-<!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="${pageTitle}" />
-<meta name="twitter:description" content="${pageSummary}" />
-<meta name="twitter:image" content="${ogImage}" />
-
+<meta name="twitter:title" content="${title}" />
+<meta name="twitter:description" content="${summary}" />
+<meta name="twitter:image" content="${image}" />
 </head>
 <body>
   <div style="font-family: sans-serif; padding: 40px;">
-    <h1>${pageTitle}</h1>
-    <p>${pageSummary}</p>
+    <h1>${title}</h1>
+    <p>${summary}</p>
     <p><a href="${pageUrl}" style="color: blue;">Click here to read the full article.</a></p>
   </div>
 </body>
 </html>`;
 }
 
-// --------------------------
-// 🔥 PROCESS CONTENTFUL ENTRIES
-// --------------------------
 async function generateStaticPages() {
-  console.log("🔍 Fetching Contentful entries...");
-
   const TYPES = [
     { id: "africanTrendingNews", path: "news" },
     { id: "houseOfAusar", path: "house-of-ausar" },
   ];
 
   for (const model of TYPES) {
-    try {
-      const entries = await client.getEntries({ content_type: model.id });
-      console.log(`📌 Rendering ${entries.items.length} ${model.id} pages...`);
+    const entries = await client.getEntries({ content_type: model.id });
+    console.log(`📌 Rendering ${entries.items.length} pages for ${model.id}...`);
 
-      for (const item of entries.items) {
-        const slug = item.fields.slug;
-        if (!slug) continue;
+    for (const item of entries.items) {
+      const slug = item.fields.slug;
+      if (!slug) continue;
 
-        // --------------------------
-        // Determine title & summary
-        // --------------------------
-        let title = "Untitled";
-        let summary = "Read this article on Adinkra Media.";
-
-        if (model.id === "africanTrendingNews") {
-          title = item.fields.newsArticle || title;
-          summary = item.fields.summaryExcerpt || summary;
-        } else if (model.id === "houseOfAusar") {
-          title = item.fields.title || title;
-          summary = item.fields.excerpt || summary; // ✅ Correct field mapping
-        }
-
-        // Fallback: use first 150 chars of bodyContent if summary missing
-        if ((!summary || summary === "Read this article on Adinkra Media.") &&
-            item.fields.bodyContent?.content?.[0]?.content?.[0]?.value) {
-          summary = item.fields.bodyContent.content[0].content[0].value.slice(0, 150);
-        }
-
-        // --------------------------
-        // OG image fallback
-        // --------------------------
-        const image =
-          item.fields.coverImage?.fields?.file?.url
-            ? "https:" + item.fields.coverImage.fields.file.url
-            : "https://adinkramedia.com/default-og.jpg";
-
-        // --------------------------
-        // Debug logs
-        // --------------------------
-        console.log(`🔹 Generating page for slug: ${slug}`);
-        console.log(`   Title: "${title}"`);
-        console.log(`   Summary: "${summary}"`);
-        console.log(`   Image: "${image}"`);
-
-        // --------------------------
-        // Generate HTML
-        // --------------------------
-        const html = generateHTML({ title, summary, image, slug, type: model.path });
-
-        const articleDir = path.join(OUTPUT_DIR, model.path, slug);
-        const articleFile = path.join(articleDir, "index.html");
-
-        ensureDir(articleDir);
-        fs.writeFileSync(articleFile, html);
-
-        console.log(`✅ Static page generated: /static/${model.path}/${slug}/index.html`);
+      // --- Determine title ---
+      let title = "";
+      if (model.id === "africanTrendingNews") {
+        title = item.fields["newsArticle"] || ""; // exact API field key
+      } else if (model.id === "houseOfAusar") {
+        title = item.fields["title"] || "";
       }
-    } catch (err) {
-      console.log(`❌ ERROR fetching ${model.id}`);
-      console.error(err.message);
+      if (!title) title = "Untitled";
+
+      // --- Determine summary ---
+      let summary = "";
+      if (model.id === "africanTrendingNews") {
+        summary = item.fields["summaryExcerpt"] || "";
+      } else if (model.id === "houseOfAusar") {
+        summary = item.fields["excerpt"] || "";
+      }
+
+      // fallback: take first text from bodyContent
+      if (!summary && item.fields.bodyContent?.content?.length) {
+        const block = item.fields.bodyContent.content.find(
+          (b) => b.content?.length
+        );
+        if (block) summary = block.content.map((c) => c.value).join(" ").slice(0, 150);
+      }
+      if (!summary) summary = "Read this article on Adinkra Media.";
+
+      // --- OG Image ---
+      const image =
+        item.fields.coverImage?.fields?.file?.url
+          ? "https:" + item.fields.coverImage.fields.file.url
+          : "https://adinkramedia.com/default-og.jpg";
+
+      // --- Debug log ---
+      console.log(`Generating: slug=${slug}, title="${title}", summary="${summary}"`);
+
+      // --- Write HTML ---
+      const html = generateHTML({ title, summary, image, slug, type: model.path });
+      const articleDir = path.join(OUTPUT_DIR, model.path, slug);
+      const articleFile = path.join(articleDir, "index.html");
+      ensureDir(articleDir);
+      fs.writeFileSync(articleFile, html);
     }
   }
 
-  console.log("🎉 ALL STATIC PAGES GENERATED SUCCESSFULLY!");
+  console.log("🎉 All static pages generated!");
 }
 
 generateStaticPages().catch(console.error);
