@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabase";
 import SponsorCard from "../components/SponsorAds";
 import PayPalArticleButton from "../components/PayPalArticleButton";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Helmet, HelmetProvider } from "react-helmet-async"; // ✅ NEW
+import { Helmet, HelmetProvider } from "react-helmet-async";
 
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
@@ -62,7 +62,7 @@ const options = {
 };
 
 export default function NewsArticle() {
-  const { id } = useParams();
+  const { slug } = useParams(); // ✅ changed from id to slug
   const navigate = useNavigate();
   const [article, setArticle] = useState(null);
   const [likeCount, setLikeCount] = useState(0);
@@ -87,7 +87,16 @@ export default function NewsArticle() {
   useEffect(() => {
     async function fetchArticle() {
       try {
-        const entry = await client.getEntry(id);
+        const entries = await client.getEntries({
+          content_type: "africanTrendingNews",
+          "fields.slug": slug, // ✅ fetch by slug
+          limit: 1,
+        });
+        const entry = entries.items[0];
+        if (!entry) {
+          navigate("/404");
+          return;
+        }
         setArticle(entry);
         fetchLikes(entry.fields.slug || entry.sys.id);
 
@@ -108,7 +117,7 @@ export default function NewsArticle() {
     }
 
     fetchArticle();
-  }, [id, isAuthenticated, user]);
+  }, [slug, isAuthenticated, user, navigate]);
 
   const fetchLikes = async (slug) => {
     const { data } = await supabase
@@ -162,7 +171,7 @@ export default function NewsArticle() {
   const coverUrl = coverImage?.fields?.file?.url
     ? `https:${coverImage.fields.file.url}`
     : "";
-  const fullUrl = `https://adinkramedia.com/news/${article.sys.id}`;
+  const fullUrl = `https://adinkramedia.com/news/${article.fields.slug}`; // ✅ use slug in URL
   const isRestricted = restrictedTypes.includes(articleType);
   const isLoginOnly = loginOnlyTypes.includes(articleType);
 
@@ -184,7 +193,6 @@ export default function NewsArticle() {
   return (
     <HelmetProvider>
       <Helmet>
-        {/* 🔹 Dynamic Meta for SEO + Social */}
         <title>{`${newsArticle} | Adinkra Media`}</title>
         <meta name="description" content={summaryExcerpt || "Adinkra Media Article"} />
         <meta property="og:title" content={newsArticle} />
