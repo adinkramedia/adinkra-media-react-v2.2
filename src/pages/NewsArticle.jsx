@@ -226,42 +226,46 @@ export default function NewsArticle() {
           </div>
         )}
 
-        {/* LIKE + SHARE */}
-        <div className="flex justify-between items-center mt-10 border-t pt-6">
-          <button
-            onClick={handleLike}
-            disabled={loadingLike}
-            className="bg-adinkra-highlight text-black px-4 py-2 rounded-full"
-          >
-            👍 Like ({likeCount})
-          </button>
+        {/* LIKE + SHARE — MOBILE RESPONSIVE */}
+<div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 mt-10 border-t pt-6">
 
-          <div className="flex gap-3">
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(newsArticle + " - " + fullUrl)}`}
-              className="bg-green-600 px-3 py-2 rounded-full text-white"
-              target="_blank"
-            >
-              WhatsApp
-            </a>
+  {/* LIKE BUTTON */}
+  <button
+    onClick={handleLike}
+    disabled={loadingLike}
+    className="bg-adinkra-highlight text-black px-6 py-3 rounded-full w-full md:w-auto text-center"
+  >
+    👍 Like ({likeCount})
+  </button>
 
-            <a
-              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`}
-              className="bg-blue-600 px-3 py-2 rounded-full text-white"
-              target="_blank"
-            >
-              Facebook
-            </a>
+  {/* SHARE BUTTONS */}
+  <div className="flex flex-wrap justify-center md:justify-end gap-3 w-full md:w-auto">
+    <a
+      href={`https://wa.me/?text=${encodeURIComponent(newsArticle + " - " + fullUrl)}`}
+      className="bg-green-600 px-4 py-2 rounded-full text-white text-sm sm:text-base"
+      target="_blank"
+    >
+      WhatsApp
+    </a>
 
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(newsArticle)}&url=${encodeURIComponent(fullUrl)}`}
-              className="bg-black px-3 py-2 rounded-full text-white"
-              target="_blank"
-            >
-              X / Twitter
-            </a>
-          </div>
-        </div>
+    <a
+      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`}
+      className="bg-blue-600 px-4 py-2 rounded-full text-white text-sm sm:text-base"
+      target="_blank"
+    >
+      Facebook
+    </a>
+
+    <a
+      href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(newsArticle)}&url=${encodeURIComponent(fullUrl)}`}
+      className="bg-black px-4 py-2 rounded-full text-white text-sm sm:text-base"
+      target="_blank"
+    >
+      X / Twitter
+    </a>
+  </div>
+</div>
+
       </section>
     </HelmetProvider>
   );
