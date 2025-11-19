@@ -153,7 +153,7 @@ export default function NewsArticle() {
     ? `https:${coverImage.fields.file.url}`
     : "";
 
-  const fullUrl = `https://adinkramedia.com/news/${slug}`;
+  const fullUrl = `https://adinkramedia.com/news-article/${slug}`;
 
   const isRestricted = restrictedTypes.includes(articleType);
   const isLoginOnly = loginOnlyTypes.includes(articleType);
