@@ -4,13 +4,13 @@ import { createClient } from "contentful";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import SponsorCard from "../components/SponsorAds";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import WaveformPlayer from "../components/WaveformPlayer";
 import { useAuth0 } from "@auth0/auth0-react";
 import AuthButton from "../components/AuthButton";
 import PayPalSubscribeButton from "../components/PayPalSubscribeButton";
-import AdsterraEmbed from "../components/AdsterraEmbed"; // ✅ Native Ad component
+import AdsterraEmbed from "../components/AdsterraEmbed";
 
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
@@ -147,23 +147,26 @@ export default function News() {
     currentPage * itemsPerPage
   );
 
-  const handlePageChange = (page) => {
-    if (page < 1 || page > totalPages) return;
-    navigate(`?page=${page}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handleReadMore = (articleId) => {
+  // ✅ Use only the slug from Contentful — no fallback generation
+  const handleReadMore = (slug) => {
+    if (!slug) return;
     sessionStorage.setItem("newsLastPage", `/news?page=${currentPage}`);
     sessionStorage.setItem("newsScrollPosition", window.scrollY.toString());
-    navigate(`/news-article/${articleId}`);
+    navigate(`/news-article/${slug}`);
+  };
+
+  const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    navigate(`/news?page=${page}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen relative">
       <Header />
 
-      {/* === Hero Section === */}
+      {/* Hero Section */}
       <section className="relative w-full overflow-hidden rounded-b-2xl">
         <picture>
           <source media="(max-width: 767px)" srcSet="/news-hero-mobile.jpg" />
@@ -174,9 +177,7 @@ export default function News() {
             className="w-full h-[80vh] md:h-[95vh] object-cover object-center"
           />
         </picture>
-
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-adinkra-gold drop-shadow-xl">
             Adinkra News
@@ -187,9 +188,8 @@ export default function News() {
         </div>
       </section>
 
-      {/* ✅ Native Ad Banner Below Hero */}
+      {/* Ads */}
       <div className="max-w-6xl mx-auto px-6 mt-8 flex flex-col items-center">
-        {/* Desktop 728x90 */}
         <div className="hidden md:block">
           <AdsterraEmbed
             htmlCode={`<script type="text/javascript">
@@ -205,7 +205,6 @@ export default function News() {
           />
         </div>
 
-        {/* Mobile 320x50 */}
         <div className="block md:hidden">
           <AdsterraEmbed
             htmlCode={`<script type="text/javascript">
@@ -222,7 +221,7 @@ export default function News() {
         </div>
       </div>
 
-      {/* === Main Content === */}
+      {/* Main */}
       <section className="max-w-6xl mx-auto px-6 py-10 space-y-8">
         {africaInAMinuteClip && <CollapsibleAudioBox clip={africaInAMinuteClip} />}
 
@@ -240,7 +239,6 @@ export default function News() {
               ))}
             </select>
           </div>
-
           <div className="max-w-xs w-full">
             <label className="block mb-2 font-semibold text-adinkra-highlight">Filter by Article Type</label>
             <select
@@ -260,7 +258,7 @@ export default function News() {
         {/* Articles Grid */}
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           {paginatedArticles.map((post) => {
-            const { coverImage, summaryExcerpt, newsArticle, date, category, articleType } = post.fields;
+            const { coverImage, summaryExcerpt, newsArticle, date, category, articleType, slug } = post.fields;
             const cover = coverImage?.fields?.file?.url;
             const postDate = new Date(date).toLocaleDateString();
             const isRestricted = restrictedTypes.includes(articleType);
@@ -299,14 +297,14 @@ export default function News() {
                       Log In
                     </button>
                   </div>
-                ) : (
+                ) : slug ? (
                   <button
-                    onClick={() => handleReadMore(post.sys.id)}
+                    onClick={() => handleReadMore(slug)}
                     className="text-adinkra-highlight font-semibold hover:underline"
                   >
                     {isRestricted ? "Read Preview →" : "Read More →"}
                   </button>
-                )}
+                ) : null}
               </div>
             );
           })}
@@ -351,7 +349,7 @@ export default function News() {
         </div>
       </section>
 
-    
+     
     </div>
   );
 }

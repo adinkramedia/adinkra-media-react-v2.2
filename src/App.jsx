@@ -40,6 +40,7 @@ export default function App() {
         {/* Page Content */}
         <div className="flex-1 relative pt-20">
           <Routes>
+
             {/* Core Pages */}
             <Route path="/" element={<Home />} />
             <Route path="/audio" element={<Audio />} />
@@ -50,8 +51,12 @@ export default function App() {
             {/* Article Pages */}
             <Route path="/house-article/:id" element={<HouseArticle />} />
             <Route path="/house/:id" element={<HouseArticle />} />
-            <Route path="/news-article/:id" element={<NewsArticle />} />
-            <Route path="/news/:id" element={<NewsArticle />} />
+
+            {/* ✅ Correct route for news articles */}
+           <Route path="/news-article/:slug" element={<NewsArticle />} />
+
+            {/* ❌ Removed the conflicting route:
+                <Route path="/news/:id" element={<NewsArticle />} /> */}
 
             {/* Adinkra TV */}
             <Route path="/adinkra-tv" element={<AdinkraTV />} />
@@ -62,11 +67,11 @@ export default function App() {
             <Route path="/premium-tv" element={<PremiumTV />} />
             <Route path="/premium-tv/:id" element={<PremiumVideo />} />
 
-            {/* Games Hub & Individual Games */}
+            {/* Games */}
             <Route path="/games" element={<Games />} />
             <Route path="/games/morabaraba" element={<MorabarabaGame />} />
 
-            {/* ✅ Protected Sections */}
+            {/* Protected Sections */}
             <Route
               path="/features"
               element={
