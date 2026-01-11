@@ -1,0 +1,53 @@
+# ==========================
+# FUNCTIONS
+# ==========================
+[functions]
+  directory = "netlify/functions"
+
+# ==========================
+# BUILD SETTINGS
+# ==========================
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+# ==========================
+# PRERENDER BOT ROUTING
+# ==========================
+[[redirects]]
+  from = "/*"
+  to = "https://service.prerender.io/:splat"
+  status = 200
+  conditions = { UserAgent = [
+    "googlebot",
+    "bingbot",
+    "Yahoo! Slurp",
+    "facebookexternalhit",
+    "twitterbot",
+    "linkedinbot",
+    "Whatsapp",
+    "WhatsApp",
+    "SkypeUriPreview",
+    "Slackbot-LinkExpanding"
+  ]}
+
+# ==========================
+# STATIC SSG ROUTES
+# ==========================
+[[redirects]]
+  from = "/news/:slug"
+  to = "/static/news/:slug/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/house-of-ausar/:slug"
+  to = "/static/house-of-ausar/:slug/index.html"
+  status = 200
+
+# ==========================
+# SPA FALLBACK (last)
+# ==========================
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

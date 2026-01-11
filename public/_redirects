@@ -1,0 +1,6 @@
+# Serve STATIC SSG pages
+/news/:slug    /static/news/:slug/index.html    200
+/house-of-ausar/:slug    /static/house-of-ausar/:slug/index.html    200
+
+# React SPA fallback
+/*    /index.html   200
