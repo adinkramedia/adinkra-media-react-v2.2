@@ -72,7 +72,6 @@ export default function NewsArticle() {
   const [loadingLike, setLoadingLike] = useState(false);
   const [hasFreeAccess, setHasFreeAccess] = useState(false);
 
-  // Restore scroll position on mount
   useEffect(() => {
     const savedScroll = sessionStorage.getItem("newsScrollPosition");
     if (savedScroll) {
@@ -97,7 +96,6 @@ export default function NewsArticle() {
 
         setArticle(entry);
 
-        // Fetch likes
         const { data } = await supabase
           .from("likes")
           .select("count")
@@ -105,7 +103,6 @@ export default function NewsArticle() {
           .maybeSingle();
         setLikeCount(data?.count || 0);
 
-        // Check free access via email
         const freeEmails = (entry.fields.freeAccessEmails || "")
           .split(/[,;\n]/)
           .map((e) => e.trim().toLowerCase());
@@ -177,12 +174,13 @@ export default function NewsArticle() {
     articleType,
   } = article.fields;
 
-  const coverUrl = coverImage?.fields?.file?.url ? `https:${coverImage.fields.file.url}` : "";
+  const rawCoverUrl = coverImage?.fields?.file?.url;
 
-  // Optimized social sharing image
-  const socialImageUrl = coverUrl
-    ? `${coverUrl}?w=1200&h=630&fit=fill&fm=jpg&q=82`
-    : "https://adinkramedia.com/og-default.jpg";
+  // Optimized OG/social image using Contentful Image API
+  // Only used when cover image actually exists
+  const socialImageUrl = rawCoverUrl
+    ? `https:${rawCoverUrl}?w=1200&h=630&fit=fill&fm=jpg&q=85&fl=progressive`
+    : undefined;
 
   // Safe meta description with fallback
   const metaDescription =
@@ -209,18 +207,24 @@ export default function NewsArticle() {
 
         <meta property="og:title" content={newsArticle} />
         <meta property="og:description" content={metaDescription} />
-        <meta property="og:image" content={socialImageUrl} />
-        <meta property="og:image:secure_url" content={socialImageUrl} />
-        <meta property="og:image:type" content="image/jpeg" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
         <meta property="og:url" content={fullUrl} />
         <meta property="og:type" content="article" />
 
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={newsArticle} />
-        <meta name="twitter:description" content={metaDescription} />
-        <meta name="twitter:image" content={socialImageUrl} />
+        {/* Only include OG image tags when we have a real image */}
+        {socialImageUrl && (
+          <>
+            <meta property="og:image" content={socialImageUrl} />
+            <meta property="og:image:secure_url" content={socialImageUrl} />
+            <meta property="og:image:type" content="image/jpeg" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content={newsArticle} />
+            <meta name="twitter:description" content={metaDescription} />
+            <meta name="twitter:image" content={socialImageUrl} />
+          </>
+        )}
       </Helmet>
 
       {isLoginOnly && !isAuthenticated ? (
@@ -245,9 +249,9 @@ export default function NewsArticle() {
             ← Back to News
           </button>
 
-          {coverUrl && (
+          {rawCoverUrl && (
             <img
-              src={coverUrl}
+              src={`https:${rawCoverUrl}`}
               alt={newsArticle}
               className="w-full rounded-3xl shadow-2xl mb-12 object-cover max-h-[70vh]"
               loading="lazy"
