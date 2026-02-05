@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 // ============================================================
-// SPONSOR CARD COMPONENT — Rotating Billboard Ads
+// SPONSOR CARD COMPONENT — Rotating Billboard Ads with Inline Copy
 // ============================================================
 export default function SponsorCard() {
   const [deviceType, setDeviceType] = useState("desktop");
@@ -40,12 +40,12 @@ export default function SponsorCard() {
   ];
 
   // ------------------------------------------------------------
-  // Rotate ads every 20 seconds
+  // Rotate ads every 6 seconds
   // ------------------------------------------------------------
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveAdIndex((prev) => (prev + 1) % ads.length);
-    }, 20000); // 20 seconds
+    }, 6000); // 6 seconds
     return () => clearInterval(interval);
   }, [ads.length]);
 
@@ -57,6 +57,15 @@ export default function SponsorCard() {
       aria-label="Sponsorship Opportunity"
       className="bg-adinkra-highlight/10 border border-adinkra-highlight rounded-lg max-w-5xl mx-auto px-6 py-6 text-center shadow-md"
     >
+      {/* ================= Intro Copy ================= */}
+      <h2 className="text-2xl md:text-3xl font-bold text-adinkra-highlight mb-3">
+        Partner with Adinkra Media
+      </h2>
+
+      <p className="text-adinkra-gold/90 mb-6 text-sm md:text-base max-w-3xl mx-auto">
+        Reach thousands of engaged readers around the world who value independent, spiritually-rooted Pan-African stories, culture, and sovereignty.
+      </p>
+
       {/* ================= Rotating Image Ad ================= */}
       <div className="flex justify-center mb-6">
         <a
@@ -75,16 +84,12 @@ export default function SponsorCard() {
         </a>
       </div>
 
-      {/* ================= Sponsor Copy ================= */}
-      <h2 className="text-2xl md:text-3xl font-bold text-adinkra-highlight mb-3">
-        Partner with Adinkra Media
-      </h2>
-
+      {/* ================= Benefit Copy ================= */}
       <p className="text-adinkra-gold/90 mb-4 text-sm md:text-base max-w-3xl mx-auto">
-        Reach thousands of engaged readers who value independent,
-        spiritually-rooted Pan-African stories, culture, and sovereignty.
+        Showcase your brand to thousands of readers who actively engage with African narratives and culture.
       </p>
 
+      {/* ================= CTA ================= */}
       <a
         href="/contact"
         className="inline-block bg-adinkra-highlight text-black px-6 py-3 rounded-lg font-bold text-base hover:bg-yellow-400 transition mb-2"
@@ -93,7 +98,7 @@ export default function SponsorCard() {
       </a>
 
       <p className="text-xs text-adinkra-gold/60 mt-2">
-        Premium placements available • Ethical & mission-aligned partners only
+        Premium placements available for brands that want to be seen.
       </p>
     </section>
   );
