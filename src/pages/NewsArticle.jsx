@@ -86,6 +86,7 @@ export default function NewsArticle() {
           content_type: "africanTrendingNews",
           "fields.slug": slug,
           limit: 1,
+          include: 2,  // ← THIS was missing → now Cover Image fields (incl. description) load
         });
 
         const entry = entries.items[0];
@@ -172,9 +173,11 @@ export default function NewsArticle() {
     category,
     date,
     articleType,
+    affiliateLinks,          // ← now accessible
   } = article.fields;
 
   const rawCoverUrl = coverImage?.fields?.file?.url;
+  const coverDescription = coverImage?.fields?.description || "";  // ← this is what you wanted
 
   const fullUrl = `https://adinkramedia.com/news-article/${slug}`;
   const isRestricted = restrictedTypes.includes(articleType);
@@ -250,12 +253,19 @@ export default function NewsArticle() {
           </button>
 
           {rawCoverUrl && (
-            <img
-              src={`https:${rawCoverUrl}`}
-              alt={newsArticle}
-              className="w-full rounded-3xl shadow-2xl mb-12 object-cover max-h-[70vh]"
-              loading="lazy"
-            />
+            <figure className="mb-12">
+              <img
+                src={`https:${rawCoverUrl}`}
+                alt={newsArticle}
+                className="w-full rounded-3xl shadow-2xl object-cover max-h-[70vh]"
+                loading="lazy"
+              />
+              {coverDescription && (
+                <figcaption className="text-adinkra-gold/60 italic mt-4 text-center text-sm">
+                  {coverDescription}
+                </figcaption>
+              )}
+            </figure>
           )}
 
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">{newsArticle}</h1>
@@ -292,6 +302,21 @@ export default function NewsArticle() {
                   )
                 : documentToReactComponents(bodyContent, options))}
           </article>
+
+          {/* ── Affiliate Links ── */}
+          {affiliateLinks && (
+            <div className="my-12 p-6 bg-gray-900/40 rounded-2xl border border-adinkra-highlight/30">
+              <h3 className="text-xl font-semibold mb-4 text-adinkra-highlight">Affiliate Links / Partners</h3>
+              {typeof affiliateLinks === "string" ? (
+                <div className="text-lg leading-relaxed whitespace-pre-wrap">
+                  {affiliateLinks}
+                </div>
+              ) : (
+                // rich text case (most common in Contentful for this kind of field)
+                documentToReactComponents(affiliateLinks, options)
+              )}
+            </div>
+          )}
 
           {isRestricted && !hasFreeAccess && (
             <div className="my-16 text-center border-t border-adinkra-highlight/30 pt-12">
