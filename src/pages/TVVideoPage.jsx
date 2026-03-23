@@ -3,38 +3,51 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { createClient } from "contentful";
 import Header from "../components/Header";
-import Footer from "../components/Footer";
 
-// ✅ Use environment variables for security in Vite
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
   accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
 });
 
-// Convert YouTube URLs to embed URLs
+// ✅ Fixed & reliable YouTube embed parser
 const getEmbedUrl = (url) => {
   if (!url) return "";
 
-  const watchMatch = url.match(/watch\?v=([a-zA-Z0-9_-]+)/);
-  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+  try {
+    const parsedUrl = new URL(url);
 
-  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+    // youtu.be short links
+    if (parsedUrl.hostname.includes("youtu.be")) {
+      const videoId = parsedUrl.pathname.replace("/", "");
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
 
-  const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]+)/);
-  if (embedMatch) return url;
+    // youtube.com/watch?v=
+    if (parsedUrl.searchParams.get("v")) {
+      const videoId = parsedUrl.searchParams.get("v");
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
 
-  return "";
+    // already embed link
+    if (parsedUrl.pathname.includes("/embed/")) {
+      return url;
+    }
+
+    return "";
+  } catch (err) {
+    return "";
+  }
 };
 
-// Extract plain text from Contentful rich text
+// ✅ Same rich text parser style
 const plainTextDescription = (richText) => {
   if (!richText?.content) return "";
+
   return richText.content
     .map((node) =>
       node.content?.map((child) => child.value || "").join(" ") || ""
     )
-    .join("\n\n")
+    .join(" ")
     .trim();
 };
 
@@ -56,50 +69,58 @@ export default function TVVideoPage() {
       });
   }, [id]);
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="text-center mt-10 text-adinkra-gold">Loading video...</div>
+      <div className="text-center mt-10 text-adinkra-gold">
+        Loading video...
+      </div>
     );
+  }
 
-  if (!video)
+  if (!video || !video.fields) {
     return (
       <div className="text-center mt-10 text-red-400">
         Video not found.
         <div className="mt-4">
           <Link
-            to="/adinkra-tv"
+            to="/gallery"
             className="text-adinkra-highlight hover:underline"
           >
-            ← Back to Adinkra TV
+            ← Back to Gallery
           </Link>
         </div>
       </div>
     );
+  }
 
-  const youtubeUrl = video.fields.youTubeUrl || "";
-  const embedUrl = getEmbedUrl(youtubeUrl);
+  // ✅ Correct field name from Contentful (case-sensitive)
+  const { title, category, description, youTubeUrl } = video.fields;
+
+  const embedUrl = getEmbedUrl(youTubeUrl);
 
   return (
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen flex flex-col">
       <Header />
 
-      <main className="max-w-4xl mx-auto px-6 py-10 flex-grow">
-        <div className="mb-4">
+      <main className="max-w-5xl mx-auto px-6 py-12 flex-grow">
+        {/* Back */}
+        <div className="mb-6">
           <Link
-            to="/adinkra-tv"
+            to="/gallery"
             className="text-adinkra-highlight hover:underline"
           >
-            ← Back to Adinkra TV
+            ← Back to Gallery
           </Link>
         </div>
 
+        {/* Video */}
         {embedUrl ? (
-          <div className="aspect-video mb-6 rounded overflow-hidden">
+          <div className="aspect-video mb-8 rounded-2xl overflow-hidden shadow-2xl border border-adinkra-highlight/20">
             <iframe
               src={embedUrl}
               allowFullScreen
               className="w-full h-full border-none"
-              title={video.fields.title || "YouTube Video"}
+              title={title || "Video"}
             />
           </div>
         ) : (
@@ -108,13 +129,30 @@ export default function TVVideoPage() {
           </div>
         )}
 
-        <h1 className="text-3xl font-bold mb-2">{video.fields.title || "No title"}</h1>
-        <p className="italic text-sm text-adinkra-gold/70 mb-4">
-          {video.fields.category || "Uncategorized"}
+        {/* Title */}
+        <h1 className="text-3xl font-bold mb-3">
+          {title || "No title"}
+        </h1>
+
+        {/* Category */}
+        <p className="italic text-sm text-adinkra-gold/70 mb-6">
+          {category || "Uncategorized"}
         </p>
 
-        <div className="prose prose-invert max-w-none text-adinkra-gold/90 whitespace-pre-wrap">
-          {plainTextDescription(video.fields.description) || "No description available."}
+        {/* Description */}
+        <div className="text-adinkra-gold/90 whitespace-pre-wrap leading-relaxed">
+          {plainTextDescription(description) ||
+            "No description available."}
+        </div>
+
+        {/* CTA */}
+        <div className="mt-10">
+          <Link
+            to="/contact"
+            className="inline-block bg-adinkra-highlight text-black font-semibold py-3 px-6 rounded-lg hover:bg-yellow-500 transition"
+          >
+            Request This Sound →
+          </Link>
         </div>
       </main>
     </div>

@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createClient } from "contentful";
-import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import { BLOCKS, MARKS } from "@contentful/rich-text-types";
 import { supabase } from "../lib/supabase";
 import Header from "../components/Header";
-import Footer from "../components/Footer";
 import AccordionFaq from "../components/AccordionFaq";
 import WaveformPlayer from "../components/WaveformPlayer";
-import SponsorAds from "../components/SponsorAds";
-import PayPalButton from "../components/PayPalButton";
+import { CartProvider, useCart } from "../context/CartContext";
+import CartDrawer from "../components/CartDrawer";
+import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 
 const client = createClient({
   space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
@@ -33,47 +32,63 @@ const licensingFaqs = [
   },
 ];
 
-const richTextOptions = {
-  renderMark: {
-    [MARKS.BOLD]: (text) => <strong>{text}</strong>,
-    [MARKS.ITALIC]: (text) => <em>{text}</em>,
-  },
-  renderNode: {
-    [BLOCKS.PARAGRAPH]: (node, children) => (
-      <p className="mb-3 leading-relaxed text-sm">{children}</p>
-    ),
-  },
-};
-
-export default function Audio() {
-  const [tracks, setTracks] = useState([]);
+function AudioContent() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
   const [likes, setLikes] = useState({});
   const [loadingLikes, setLoadingLikes] = useState({});
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartToast, setCartToast] = useState(false);
 
+  const { addToCart, cartItems, clearCart } = useCart();
+
+  // ================= FETCH =================
   useEffect(() => {
-    client
-      .getEntries({ content_type: "audioTrack", order: "-sys.createdAt" })
-      .then((res) => {
-        setTracks(res.items);
-        res.items.forEach((track) => fetchLikeCount(track.fields.slug));
-      })
-      .catch(console.error);
+    const fetchData = async () => {
+      try {
+        const trackRes = await client.getEntries({
+          content_type: "audioTrack",
+          order: "-sys.createdAt",
+        });
+
+        const albumRes = await client.getEntries({
+          content_type: "album",
+          order: "-sys.createdAt",
+        });
+
+        const allItems = [...trackRes.items, ...albumRes.items];
+        setItems(allItems);
+
+        allItems.forEach((item) => {
+          const slug = item.fields.slug || item.sys.id;
+          fetchLikeCount(slug);
+        });
+      } catch (err) {
+        console.error("Contentful fetch error:", err);
+      }
+    };
+
+    fetchData();
   }, []);
 
+  // ================= LIKES =================
   const fetchLikeCount = async (slug) => {
     const { data } = await supabase
       .from("likes")
       .select("count")
       .eq("slug", slug)
       .maybeSingle();
-    if (data) setLikes((prev) => ({ ...prev, [slug]: data.count || 0 }));
+
+    if (data) {
+      setLikes((prev) => ({ ...prev, [slug]: data.count || 0 }));
+    }
   };
 
   const handleLike = async (slug) => {
     setLoadingLikes((prev) => ({ ...prev, [slug]: true }));
+
     const { data: existing } = await supabase
       .from("likes")
       .select("id, count")
@@ -87,191 +102,485 @@ export default function Audio() {
         .eq("id", existing.id);
       setLikes((prev) => ({ ...prev, [slug]: existing.count + 1 }));
     } else {
-      await supabase.from("likes").insert({ slug, type: "audio", count: 1 });
+      await supabase.from("likes").insert({
+        slug,
+        type: "audio",
+        count: 1,
+      });
       setLikes((prev) => ({ ...prev, [slug]: 1 }));
     }
+
     setLoadingLikes((prev) => ({ ...prev, [slug]: false }));
   };
 
-  const allCategories = ["All", ...new Set(tracks.map((t) => t.fields.category || "Audio"))];
-  const filteredTracks =
-    selectedCategory === "All"
-      ? tracks
-      : tracks.filter((t) => t.fields.category === selectedCategory);
+  // ================= FILTERING =================
+  const filteredItems = items.filter((item) => {
+    const f = item.fields || {};
+    if (selectedCategory !== "All" && f.category !== selectedCategory) {
+      return false;
+    }
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (f.trackTitle || f.title || "").toLowerCase().includes(q) ||
+      (f.genre || f.packGenre || "").toLowerCase().includes(q) ||
+      (f.mood || "").toLowerCase().includes(q)
+    );
+  });
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentTracks = filteredTracks.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredTracks.length / itemsPerPage);
+  const singles = filteredItems.filter(
+    (item) => item.sys.contentType.sys.id === "audioTrack"
+  );
+  const albums = filteredItems.filter(
+    (item) => item.sys.contentType.sys.id === "album"
+  );
 
-  const nextPage = () => setCurrentPage((p) => Math.min(p + 1, totalPages));
-  const prevPage = () => setCurrentPage((p) => Math.max(p - 1, 1));
+  // ================= ADD TO CART / DIRECT DOWNLOAD =================
+  const handleAddOrDownload = (item) => {
+    const f = item.fields || {};
+    const contentType = item.sys.contentType.sys.id;
+    const isFree = f.freeDownload === true;
 
+    let downloadUrls = [];
+
+    if (contentType === "audioTrack") {
+      if (Array.isArray(f.fullDownloadFile)) {
+        downloadUrls = f.fullDownloadFile
+          .filter(Boolean)
+          .map((file) => `https:${file?.fields?.file?.url}`)
+          .filter(Boolean);
+      } else if (f.fullDownloadFile?.fields?.file?.url) {
+        downloadUrls = [`https:${f.fullDownloadFile.fields.file.url}`];
+      }
+    } else if (contentType === "album") {
+      if (f.downloadUrl && f.downloadUrl.trim()) {
+        downloadUrls = [f.downloadUrl.trim()];
+      }
+    }
+
+    if (downloadUrls.length === 0) {
+      alert("No download file available for this item.");
+      return;
+    }
+
+    if (isFree) {
+      // Direct download for free items
+      downloadUrls.forEach((url) => {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    } else {
+      // Add to cart for paid items
+      const priceValue = Number(f.priceDollar ?? 0);
+      const finalPrice = isNaN(priceValue) ? 0 : priceValue;
+
+      addToCart({
+        slug: f.slug || item.sys.id,
+        title: f.trackTitle || f.title || "Untitled",
+        price: finalPrice,
+        downloadUrls,
+      });
+
+      setCartToast(true);
+      setTimeout(() => setCartToast(false), 2000);
+    }
+  };
+
+  const handlePurchaseComplete = () => {
+    const purchasedSlugs = cartItems.map((item) => item.slug);
+    clearCart();
+    navigate(`/downloads?slugs=${purchasedSlugs.join(",")}`);
+  };
+
+  // ================= HELPERS =================
+  const getTitle = (f) => f.trackTitle || f.title || "Untitled";
+  const getCoverUrl = (f) => f.coverImage?.fields?.file?.url || null;
+
+  const getPreviewUrls = (f) => {
+    if (Array.isArray(f.previewAudio)) {
+      return f.previewAudio.map((file) => file?.fields?.file?.url).filter(Boolean);
+    }
+    const url = f.previewAudio?.fields?.file?.url;
+    return url ? [url] : [];
+  };
+
+  const getPriceDisplay = (f) => {
+    if (f.freeDownload === true) return "Free";
+    const p = Number(f.priceDollar);
+    if (!isNaN(p)) return `$${p.toFixed(2)}`;
+    return "—";
+  };
+
+  const getMetadata = (f, contentType) => {
+    const parts = [];
+    if (contentType === "audioTrack") {
+      if (f.genre) parts.push(f.genre);
+      if (f.mood) parts.push(f.mood);
+      if (f.bpm) parts.push(`${f.bpm} BPM`);
+      if (f.duration) parts.push(f.duration);
+    } else {
+      if (f.packGenre) parts.push(f.packGenre);
+      if (f.category) parts.push(f.category);
+      if (f.totalFiles) parts.push(`${f.totalFiles} files`);
+      if (Array.isArray(f.tracksIncluded)) {
+        parts.push(`${f.tracksIncluded.length} tracks`);
+      }
+    }
+    return parts.filter(Boolean);
+  };
+
+  // ================= RENDER =================
   return (
-    <div className="bg-adinkra-bg text-adinkra-gold min-h-screen flex flex-col">
+    <div className="bg-adinkra-bg text-adinkra-gold min-h-screen flex flex-col w-full">
       <Header />
 
-      {/* Original Hero — Fast & Clean */}
-      <section className="relative w-full h-[70vh] bg-black overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/audio-hero-desktop.jpg')" }}
+      {/* Updated HERO with MP4 videos */}
+      <section className="relative w-full h-[60vh] overflow-hidden">
+        {/* Desktop video - hidden on mobile */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover hidden md:block"
+          src="/audio-hero-desktop.mp4"
         />
+
+        {/* Mobile video - hidden on desktop */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover md:hidden"
+          src="/audio-hero-mobile.mp4"
+        />
+
+        {/* Dark overlay + content */}
         <div className="absolute inset-0 bg-black/60 flex flex-col justify-center items-center text-center px-6">
           <h1 className="text-5xl md:text-6xl font-bold mb-4 drop-shadow-2xl">
             Adinkra Audio
           </h1>
-          <p className="text-lg md:text-xl max-w-2xl opacity-95 leading-relaxed">
-            Explore royalty-free loops, melodies & FX — modern sounds inspired by African roots.
+          <p className="text-lg md:text-xl max-w-4xl opacity-95 leading-relaxed">
+            Explore exclusive scores, loops, and cinematic soundscapes.
           </p>
         </div>
       </section>
 
-      {/* Billboard */}
-      <div className="my-12 px-6 max-w-7xl mx-auto">
-        <SponsorAds />
+      {/* SEARCH unchanged */}
+      <div className="w-full px-6 mt-10 flex justify-center">
+        <input
+          type="text"
+          placeholder="Search tracks, albums, genres..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full max-w-4xl px-5 py-3 rounded-full text-black focus:outline-none"
+        />
       </div>
 
-      {/* Modern Glass Category Pills */}
-      <div className="max-w-7xl mx-auto px-6 mb-12">
-        <div className="flex flex-wrap gap-4 justify-center">
-          {allCategories.map((cat) => (
+      {/* Collapsible Category Dropdown unchanged */}
+      <div className="w-full px-6 mt-8 flex justify-center">
+        <details className="w-full max-w-4xl bg-adinkra-highlight/10 border border-adinkra-highlight/30 rounded-lg">
+          <summary className="px-6 py-3 font-medium cursor-pointer flex justify-between items-center">
+            <span>Filter by Category {selectedCategory !== "All" ? `(${selectedCategory})` : ""}</span>
+            <span>▼</span>
+          </summary>
+          <div className="px-6 pb-6 pt-2 flex flex-wrap gap-3">
             <button
-              key={cat}
-              onClick={() => {
-                setSelectedCategory(cat);
-                setCurrentPage(1);
-              }}
-              className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 border backdrop-blur-sm ${
-                cat === selectedCategory
-                  ? "bg-adinkra-highlight/90 text-adinkra-bg border-adinkra-highlight shadow-md"
-                  : "bg-adinkra-highlight/10 text-adinkra-gold border-adinkra-highlight/30 hover:bg-adinkra-highlight/25"
+              onClick={() => setSelectedCategory("All")}
+              className={`px-5 py-2.5 rounded-full text-sm font-medium border ${
+                "All" === selectedCategory
+                  ? "bg-adinkra-highlight text-adinkra-bg"
+                  : "bg-adinkra-highlight/10 border-adinkra-highlight/30"
               }`}
             >
-              {cat}
+              All
             </button>
-          ))}
+
+            <div className="w-full h-px bg-adinkra-highlight/20 my-3" />
+
+            <div className="flex flex-wrap gap-3">
+              {[
+                "Music", "Scores", "Meditation", "Loops & Samples",
+                "World and Traditional", "Sound Effects", "Ambient"
+              ].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-5 py-2.5 rounded-full text-sm font-medium border ${
+                    cat === selectedCategory
+                      ? "bg-adinkra-highlight text-adinkra-bg"
+                      : "bg-adinkra-highlight/10 border-adinkra-highlight/30"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="w-full h-px bg-adinkra-highlight/20 my-3" />
+
+            <div className="flex flex-wrap gap-3">
+              {[
+                "Drum Pack", "Ambient Pack", "Traditional Instruments",
+                "Cinematic Pack", "Sound FX Pack", "Synth Pack"
+              ].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-5 py-2.5 rounded-full text-sm font-medium border ${
+                    cat === selectedCategory
+                      ? "bg-adinkra-highlight text-adinkra-bg"
+                      : "bg-adinkra-highlight/10 border-adinkra-highlight/30"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        </details>
+      </div>
+
+      {/* SINGLE TRACKS SECTION unchanged */}
+      <section className="w-full px-6 mt-12">
+        <h2 className="text-3xl font-bold mb-6 text-center md:text-left">Single Tracks</h2>
+        {singles.length === 0 ? (
+          <p className="text-center opacity-70">No tracks found in this category.</p>
+        ) : (
+          <div className="flex flex-col gap-6">
+            {singles.map((item) => {
+              const f = item.fields || {};
+              const slug = f.slug || item.sys.id;
+              const cover = getCoverUrl(f);
+              const preview = getPreviewUrls(f)[0] || null;
+              const priceStr = getPriceDisplay(f);
+              const meta = getMetadata(f, "audioTrack");
+
+              return (
+                <div
+                  key={slug}
+                  className="flex flex-col md:flex-row items-center gap-6 border-b border-adinkra-highlight/20 pb-6"
+                >
+                  <div className="w-24 h-24 flex-shrink-0">
+                    <img
+                      src={cover ? `https:${cover}` : "/placeholder.jpg"}
+                      alt={getTitle(f)}
+                      className="w-full h-full object-cover rounded"
+                    />
+                  </div>
+
+                  <div className="flex flex-col w-full md:w-80">
+                    <div className="font-semibold text-lg">{getTitle(f)}</div>
+                    <div className="text-xs opacity-70 mt-1 flex flex-wrap gap-3">
+                      {meta.map((m, i) => <span key={i}>{m}</span>)}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 w-full min-h-[40px]">
+                    {preview ? (
+                      <WaveformPlayer audioUrl={`https:${preview}`} />
+                    ) : (
+                      <div className="h-10 flex items-center justify-center bg-black/30 rounded text-sm opacity-70 italic">
+                        No preview available
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <span className="font-bold text-lg">{priceStr}</span>
+                    <button
+                      onClick={() => handleLike(slug)}
+                      disabled={loadingLikes[slug]}
+                      className="bg-adinkra-highlight/15 px-3 py-1 rounded"
+                    >
+                      ♡ {likes[slug] || 0}
+                    </button>
+                    <button
+                      onClick={() => handleAddOrDownload(item)}
+                      className="bg-adinkra-highlight px-5 py-2.5 rounded hover:bg-yellow-500 text-adinkra-bg font-medium"
+                    >
+                      {f.freeDownload ? "Download" : "Add to Cart"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* SAMPLE PACKS SECTION unchanged */}
+      <section className="w-full px-6 mt-16">
+        <h2 className="text-3xl font-bold mb-6 text-center md:text-left">Sample Packs</h2>
+        {albums.length === 0 ? (
+          <p className="text-center opacity-70">No packs found in this category.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {albums.map((item) => {
+              const f = item.fields || {};
+              const slug = f.slug || item.sys.id;
+              const cover = getCoverUrl(f);
+              const previewUrls = getPreviewUrls(f);
+              const priceStr = getPriceDisplay(f);
+              const meta = getMetadata(f, "album");
+              const isFree = f.freeDownload === true;
+
+              return (
+                <details
+                  key={slug}
+                  className="bg-black/20 rounded-xl border border-adinkra-highlight/30 overflow-hidden"
+                >
+                  <summary className="px-6 py-5 cursor-pointer flex flex-col md:flex-row md:items-center gap-4 md:gap-6 hover:bg-black/30 transition-colors">
+                    <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0">
+                      <img
+                        src={cover ? `https:${cover}` : "/placeholder.jpg"}
+                        alt={getTitle(f)}
+                        className="w-full h-full object-cover rounded-lg shadow"
+                      />
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                          <h3 className="text-xl font-bold">{getTitle(f)}</h3>
+                          <span className="inline-block mt-1 text-xs bg-adinkra-highlight text-black px-2.5 py-1 rounded-full">
+                            SAMPLE PACK
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold">{priceStr}</div>
+                          {isFree && <div className="text-sm text-green-400">Free</div>}
+                        </div>
+                      </div>
+
+                      <div className="mt-2 text-sm opacity-80 flex flex-wrap gap-3">
+                        {meta.map((m, i) => (
+                          <span key={i} className="bg-black/30 px-3 py-1 rounded">
+                            {m}
+                          </span>
+                        ))}
+                        {f.releaseDate && (
+                          <span className="bg-black/30 px-3 py-1 rounded">
+                            Released: {new Date(f.releaseDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </summary>
+
+                  <div className="px-6 pb-6 pt-2 border-t border-adinkra-highlight/20">
+                    <div className="flex flex-col gap-8">
+                      {previewUrls.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold mb-3 text-lg">Previews</h4>
+                          <div className="space-y-6">
+                            {previewUrls.map((url, idx) => (
+                              <WaveformPlayer key={idx} audioUrl={`https:${url}`} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div>
+                          <div className="text-lg font-semibold">Price</div>
+                          <div className="text-3xl font-bold">{priceStr}</div>
+                          {isFree && <div className="text-green-400">Free Download</div>}
+                        </div>
+                        <div className="flex gap-4">
+                          <button
+                            onClick={() => handleLike(slug)}
+                            disabled={loadingLikes[slug]}
+                            className="bg-adinkra-highlight/30 px-5 py-2.5 rounded"
+                          >
+                            ♡ {likes[slug] || 0}
+                          </button>
+                          <button
+                            onClick={() => handleAddOrDownload(item)}
+                            className="bg-adinkra-highlight px-6 py-2.5 rounded hover:bg-yellow-500 text-adinkra-bg font-medium"
+                          >
+                            {isFree ? "Download Now" : "Add to Cart"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {f.description && (
+                        <div className="prose prose-invert max-w-none">
+                          <h4 className="font-semibold text-lg mb-3">Description</h4>
+                          {documentToReactComponents(f.description)}
+                        </div>
+                      )}
+
+                      {Array.isArray(f.tracksIncluded) && f.tracksIncluded.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-lg mb-3">
+                            Tracks Included ({f.tracksIncluded.length})
+                          </h4>
+                          <ul className="list-disc pl-6 space-y-1.5 text-sm opacity-90">
+                            {f.tracksIncluded.map((track, idx) => (
+                              <li key={idx}>
+                                {track.fields?.trackTitle ||
+                                  track.fields?.title ||
+                                  `Track ${idx + 1}`}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {f.affiliateLinks && (
+                        <div className="prose prose-invert max-w-none">
+                          <h4 className="font-semibold text-lg mb-3">More Info / Affiliates</h4>
+                          {documentToReactComponents(f.affiliateLinks)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* FAQ + Cart unchanged */}
+      <div className="mt-16 mb-16 w-full px-6 flex justify-center">
+        <div className="w-full max-w-4xl">
+          <AccordionFaq title="Adinkra Audio Licensing FAQ" faqs={licensingFaqs} />
         </div>
       </div>
 
-      {/* Upgraded Grid — Beautiful but Performant */}
-      <section className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
-        {currentTracks.map((item) => {
-          const f = item.fields;
-          const slug = f.slug || item.sys.id;
-          const title = f.trackTitle;
-          const cover = f.coverImage?.fields?.file?.url;
-          const preview = f.previewAudio?.fields?.file?.url;
-          const download = f.fullDownloadFile?.fields?.file?.url;
-          const affiliateLinks = f.affiliateLinks;
-          const priceRaw = f.priceEuro ?? f.price ?? null;
-          const price = f.freeDownload
-            ? null
-            : priceRaw !== null && !isNaN(priceRaw)
-            ? parseFloat(priceRaw).toFixed(2)
-            : null;
-
-          return (
-            <div
-              key={slug}
-              className="group bg-adinkra-card/90 border border-adinkra-highlight/20 rounded-3xl overflow-hidden hover:-translate-y-2 hover:border-adinkra-highlight/50 hover:shadow-xl transition-all duration-500"
-            >
-              <div className="relative overflow-hidden">
-                <img
-                  src={`https:${cover}`}
-                  alt={title}
-                  className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                {f.freeDownload && (
-                  <span className="absolute top-4 right-4 bg-adinkra-highlight text-adinkra-bg text-xs px-4 py-2 rounded-full font-bold shadow">
-                    FREE
-                  </span>
-                )}
-              </div>
-
-              <div className="p-6 flex flex-col gap-4">
-                <div>
-                  <h3 className="text-xl font-bold truncate">{title}</h3>
-                  <p className="text-sm uppercase tracking-wider text-adinkra-gold/60 mt-1">
-                    {f.category || "Audio"}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => handleLike(slug)}
-                    disabled={loadingLikes[slug]}
-                    className="flex items-center gap-2 text-sm bg-adinkra-highlight/20 px-4 py-2 rounded-full hover:bg-adinkra-highlight/40 transition-colors"
-                  >
-                    <span className="text-lg">❤️</span> {likes[slug] || 0}
-                  </button>
-                  <span className="text-lg font-bold">
-                    {price ? `€${price}` : f.freeDownload ? "Free" : "Contact"}
-                  </span>
-                </div>
-
-                {preview && (
-                  <div className="mt-3">
-                    <WaveformPlayer audioUrl={`https:${preview}`} />
-                  </div>
-                )}
-
-                <div className="mt-4">
-                  {f.freeDownload && download ? (
-                    <button
-                      onClick={() => window.open(`https:${download}`, "_blank")}
-                      className="w-full bg-adinkra-highlight text-adinkra-bg font-semibold py-3 rounded-xl hover:bg-yellow-500 transition-colors"
-                    >
-                      ⬇ Free Download
-                    </button>
-                  ) : price ? (
-                    <PayPalButton
-                      price={price}
-                      title={title}
-                      onSuccess={() => {}}
-                    />
-                  ) : null}
-                </div>
-
-                {affiliateLinks && (
-                  <div className="mt-4 pt-4 border-t border-adinkra-highlight/20 text-sm">
-                    {documentToReactComponents(affiliateLinks, richTextOptions)}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      {/* Clean Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-6 my-16">
-          <button
-            onClick={prevPage}
-            disabled={currentPage === 1}
-            className="px-6 py-3 rounded-full bg-adinkra-highlight/20 hover:bg-adinkra-highlight/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium"
-          >
-            ← Prev
-          </button>
-          <span className="text-lg">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={nextPage}
-            disabled={currentPage === totalPages}
-            className="px-6 py-3 rounded-full bg-adinkra-highlight/20 hover:bg-adinkra-highlight/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium"
-          >
-            Next →
-          </button>
+      {cartToast && (
+        <div className="fixed bottom-24 right-6 bg-adinkra-highlight text-adinkra-bg px-5 py-3 rounded-xl shadow-xl font-semibold animate-bounce z-50">
+          ✓ Added to Cart
         </div>
       )}
 
-      <div className="mt-16 mb-12 px-6 max-w-4xl mx-auto">
-        <AccordionFaq title="Adinkra Audio Licensing FAQ" faqs={licensingFaqs} />
-      </div>
+      <button
+        onClick={() => setCartOpen(true)}
+        className="fixed bottom-6 right-6 bg-adinkra-highlight text-adinkra-bg px-6 py-3 rounded-full shadow-xl font-semibold"
+      >
+        🛒 Cart ({cartItems.length})
+      </button>
 
-      <Footer />
+      <CartDrawer
+        isOpen={cartOpen}
+        onClose={() => setCartOpen(false)}
+        onPurchaseComplete={handlePurchaseComplete}
+      />
     </div>
+  );
+}
+
+export default function Audio() {
+  return (
+    <CartProvider>
+      <AudioContent />
+    </CartProvider>
   );
 }

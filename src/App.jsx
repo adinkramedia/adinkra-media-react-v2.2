@@ -1,4 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useState } from "react";
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+
 import AnalyticsTracker from "./components/AnalyticsTracker";
 import ProtectedContent from "./components/ProtectedContent";
 
@@ -8,16 +11,20 @@ import Footer from "./components/Footer";
 
 // Audio Player
 import { AudioPlayerProvider } from "./components/AudioPlayerContext";
-import BackgroundAudioPlayer from "./components/BackgroundAudioPlayer"; // ← Add this import!
+import BackgroundAudioPlayer from "./components/BackgroundAudioPlayer";
 
 // Pages
 import Home from "./pages/Home";
 import Audio from "./pages/Audio";
+import Downloads from "./pages/Downloads"; // <--- Added Downloads
 import HouseOfAusar from "./pages/HouseOfAusar";
 import HouseArticle from "./pages/HouseArticle";
 import News from "./pages/News";
 import NewsArticle from "./pages/NewsArticle";
-import AdinkraTV from "./pages/AdinkraTV";
+
+// ✅ FIXED IMPORT NAME
+import AdinkraGallery from "./pages/AdinkraGallery";
+
 import TVVideoPage from "./pages/TVVideoPage";
 import PremiumTV from "./pages/PremiumTV";
 import PremiumVideo from "./pages/PremiumVideo";
@@ -28,64 +35,87 @@ import Games from "./Games/Games";
 import MorabarabaGame from "./Games/MorabarabaGame";
 
 export default function App() {
+  const [audioCartOpen, setAudioCartOpen] = useState(false);
+
   return (
-    <AudioPlayerProvider>
-      <div className="min-h-screen flex flex-col bg-adinkra-bg text-adinkra-gold">
-        <AnalyticsTracker />
+    <PayPalScriptProvider
+      options={{
+        "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
+        currency: "USD",
+        intent: "capture",
+      }}
+    >
+      <AudioPlayerProvider>
+        <div className="min-h-screen flex flex-col bg-adinkra-bg text-adinkra-gold relative">
+          <AnalyticsTracker />
 
-        {/* Global Navbar */}
-        <Header />
+          {/* Global Navbar */}
+          <Header />
 
-        {/* Zen Orb Player Panel - persistent, but hidden until toggled */}
-        <BackgroundAudioPlayer /> {/* ← Add this line! (pass isSubscribed if needed) */}
+          {/* Persistent Audio Player */}
+          <BackgroundAudioPlayer />
 
-        {/* Page Content */}
-        <div className="flex-1 relative pt-20">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/audio" element={<Audio />} />
-            <Route path="/house-of-ausar" element={<HouseOfAusar />} />
-            <Route path="/news" element={<News />} />
-            <Route path="/contact" element={<Contact />} />
+          {/* Page Content */}
+          <div className="flex-1 relative pt-20">
+            <Routes>
+              <Route path="/" element={<Home />} />
 
-            <Route path="/house-article/:id" element={<HouseArticle />} />
-            <Route path="/house/:id" element={<HouseArticle />} />
-            <Route path="/news-article/:slug" element={<NewsArticle />} />
+              {/* Audio Pages */}
+              <Route path="/audio" element={<Audio />} />
+              <Route path="/downloads" element={<Downloads />} />
 
-            <Route path="/adinkra-tv" element={<AdinkraTV />} />
-            <Route path="/tv" element={<Navigate to="/adinkra-tv" replace />} />
-            <Route path="/tv-video/:id" element={<TVVideoPage />} />
+              {/* House of Ausar (can remove later if you fully replace it) */}
+              <Route path="/house-of-ausar" element={<HouseOfAusar />} />
+              <Route path="/house-article/:id" element={<HouseArticle />} />
+              <Route path="/house/:id" element={<HouseArticle />} />
 
-            <Route path="/premium-tv" element={<PremiumTV />} />
-            <Route path="/premium-tv/:id" element={<PremiumVideo />} />
+              {/* News */}
+              <Route path="/news" element={<News />} />
+              <Route path="/news-article/:slug" element={<NewsArticle />} />
 
-            <Route path="/games" element={<Games />} />
-            <Route path="/games/morabaraba" element={<MorabarabaGame />} />
+              {/* ✅ GALLERY (correct now) */}
+              <Route path="/gallery" element={<AdinkraGallery />} />
+              <Route path="/tv-video/:id" element={<TVVideoPage />} />
 
-            {/* Protected example routes */}
-            <Route
-              path="/features"
-              element={
-                <ProtectedContent>
-                  <h1 className="text-center mt-20 text-2xl">Features Page</h1>
-                </ProtectedContent>
-              }
-            />
+              {/* Premium */}
+              <Route path="/premium-tv" element={<PremiumTV />} />
+              <Route path="/premium-tv/:id" element={<PremiumVideo />} />
 
-            <Route
-              path="*"
-              element={
-                <h1 className="text-center mt-20 text-adinkra-highlight text-2xl">
-                  404 — Page Not Found
-                </h1>
-              }
-            />
-          </Routes>
+              {/* Games */}
+              <Route path="/games" element={<Games />} />
+              <Route path="/games/morabaraba" element={<MorabarabaGame />} />
+
+              {/* Contact */}
+              <Route path="/contact" element={<Contact />} />
+
+              {/* Protected */}
+              <Route
+                path="/features"
+                element={
+                  <ProtectedContent>
+                    <h1 className="text-center mt-20 text-2xl">
+                      Features Page
+                    </h1>
+                  </ProtectedContent>
+                }
+              />
+
+              {/* 404 */}
+              <Route
+                path="*"
+                element={
+                  <h1 className="text-center mt-20 text-adinkra-highlight text-2xl">
+                    404 — Page Not Found
+                  </h1>
+                }
+              />
+            </Routes>
+          </div>
+
+          {/* Footer */}
+          <Footer />
         </div>
-
-        {/* Footer */}
-        <Footer />
-      </div>
-    </AudioPlayerProvider>
+      </AudioPlayerProvider>
+    </PayPalScriptProvider>
   );
 }

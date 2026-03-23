@@ -5,17 +5,27 @@ const faqs = [
   {
     question: "What is Adinkra Media?",
     answer:
-      "Adinkra Media is a Pan-African platform bridging the ancient and the modern — telling stories of African kingdoms, culture, consciousness, and current affairs through media, sound, and sacred knowledge.",
+      "Adinkra Media is a professional audio production company, creating original music, soundscapes, and audio solutions for media, film, advertising, and digital projects.",
   },
   {
-    question: "Who is it for?",
+    question: "Who can work with you?",
     answer:
-      "For Africans and global diasporans seeking truth, power, and reconnection. Whether you're a seeker, creator, activist, or scholar — this is your space.",
+      "We work with artists, content creators, brands, and production companies looking for high-quality audio solutions — from custom compositions to sound design and audio consulting.",
   },
   {
-    question: "Why does it matter?",
+    question: "Why choose Adinkra Media?",
     answer:
-      "Because Africa's story has been stolen, silenced, and sold. We are reclaiming narrative power — documenting what’s sacred, sovereign, and ours.",
+      "We combine creativity, technical expertise, and attention to detail to deliver audio that enhances your project, aligns with your vision, and elevates the listener experience.",
+  },
+  {
+    question: "What services do you offer?",
+    answer:
+      "Our services include custom music creation, sound design, film scoring, foley, audio editing, mixing, and mastering tailored to your project’s needs and goals.",
+  },
+  {
+    question: "How can I get started?",
+    answer:
+      "Simply reach out through our Contact page with your project details. We’ll discuss your needs, provide a quote, and start creating audio tailored specifically for you.",
   },
 ];
 
@@ -30,7 +40,7 @@ export default function Faq() {
     <section className="bg-adinkra-card py-16 px-4">
       <div className="max-w-screen-md mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-10 text-adinkra-gold text-center">
-          What is Adinkra?
+          Frequently Asked Questions
         </h2>
 
         <div className="space-y-6">

@@ -1,17 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 
 let currentActiveWave = null;
 
 export default function WaveformPlayer({ audioUrl }) {
+
   const containerRef = useRef(null);
   const waveRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    if (!audioUrl || !containerRef.current) {
-      console.warn("No audioUrl or containerRef");
-      return;
-    }
+
+    if (!audioUrl || !containerRef.current) return;
 
     if (waveRef.current) {
       waveRef.current.destroy();
@@ -19,74 +19,100 @@ export default function WaveformPlayer({ audioUrl }) {
     }
 
     const wave = WaveSurfer.create({
+
       container: containerRef.current,
-      waveColor: "rgba(255, 215, 0, 0.4)",   // lighter gold with transparency
-      progressColor: "#FFD700",               // full gold for progress
-      height: 60,
+
+      height: 70,
+
+      waveColor: "rgba(248,183,53,0.35)",
+      progressColor: "#f8b735",
+
+      cursorColor: "#f8b735",
+      cursorWidth: 2,
+
       barWidth: 2,
+      barGap: 2,
+
+      normalize: true,
       responsive: true,
-      cursorWidth: 1,
+
       interact: true,
-      // backgroundColor: "transparent",     // no background option in WaveSurfer, so do it with CSS below
+      dragToSeek: true,
+
+      backend: "MediaElement"
+
     });
 
     waveRef.current = wave;
 
-    wave.on("ready", () => {
-      console.log("WaveSurfer ready!");
-    });
-
-    wave.on("error", (e) => {
-      console.error("WaveSurfer error:", e);
-    });
-
     wave.on("play", () => {
+
       if (currentActiveWave && currentActiveWave !== wave) {
         currentActiveWave.pause();
+        currentActiveWave.seekTo(0);
       }
+
       currentActiveWave = wave;
-      console.log("Playing audio");
+      setIsPlaying(true);
+
+    });
+
+    wave.on("pause", () => {
+      setIsPlaying(false);
+    });
+
+    wave.on("finish", () => {
+      setIsPlaying(false);
+      wave.seekTo(0);
+    });
+
+    wave.on("error", (err) => {
+      console.error("WaveSurfer error:", err);
     });
 
     wave.load(audioUrl);
 
     return () => {
+
       if (waveRef.current) {
         waveRef.current.destroy();
         waveRef.current = null;
       }
-      if (currentActiveWave === waveRef.current) {
-        currentActiveWave = null;
-      }
+
     };
+
   }, [audioUrl]);
 
   const togglePlay = () => {
-    if (waveRef.current) {
-      waveRef.current.playPause();
-    } else {
-      console.warn("WaveSurfer instance not ready");
-    }
+
+    if (!waveRef.current) return;
+
+    waveRef.current.playPause();
+
   };
 
   return (
-    <div>
+
+    <div className="w-full flex flex-col gap-2">
+
       <div
         ref={containerRef}
-        className="waveform-container mb-2"
+        className="w-full"
         style={{
-          width: "100%",
-          height: 60,
-          backgroundColor: "transparent",  // Make sure background is transparent or your preferred color
-          userSelect: "none",
+          height: "70px",
+          userSelect: "none"
         }}
       />
+
       <button
         onClick={togglePlay}
-        className="bg-adinkra-highlight text-adinkra-bg font-semibold py-1 px-3 rounded text-sm hover:bg-yellow-500 transition"
+        className="self-start bg-adinkra-highlight text-adinkra-bg font-semibold py-1 px-3 rounded text-sm hover:bg-yellow-500 transition"
       >
-        ▶ Play / Pause
+        {isPlaying ? "❚❚ Pause" : "▶ Play"}
       </button>
+
     </div>
+
   );
+
 }
