@@ -1,74 +1,89 @@
-// src/pages/TVVideoPage.jsx
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { createClient } from "contentful";
 import Header from "../components/Header";
+import { sanity } from "../lib/sanity";
+import groq from "groq";
 
-const client = createClient({
-  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
-  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
-});
-
-// ✅ Fixed & reliable YouTube embed parser
+// ✅ YouTube parser (same logic as gallery)
 const getEmbedUrl = (url) => {
   if (!url) return "";
 
-  try {
-    const parsedUrl = new URL(url);
+  const match = url.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/
+  );
 
-    // youtu.be short links
-    if (parsedUrl.hostname.includes("youtu.be")) {
-      const videoId = parsedUrl.pathname.replace("/", "");
-      return `https://www.youtube.com/embed/${videoId}`;
+  return match ? `https://www.youtube.com/embed/${match[1]}` : "";
+};
+
+// ✅ Portable text renderer
+const renderPortableText = (blocks) => {
+  if (!blocks || !Array.isArray(blocks)) return null;
+
+  return blocks.map((block, index) => {
+    if (block._type === "block") {
+      return (
+        <p key={block._key || index} className="mb-4 opacity-90">
+          {block.children?.map((child) => child.text).join(" ")}
+        </p>
+      );
     }
+    return null;
+  });
+};
 
-    // youtube.com/watch?v=
-    if (parsedUrl.searchParams.get("v")) {
-      const videoId = parsedUrl.searchParams.get("v");
-      return `https://www.youtube.com/embed/${videoId}`;
+// ✅ GROQ QUERY (fetch single video by ID)
+const query = groq`
+*[_type == "videoDemo" && _id == $id][0] {
+  _id,
+  title,
+  description,
+  category,
+  youtubeUrl,
+  featured,
+  premium,
+  createdAt,
+
+  thumbnail {
+    asset-> {
+      url
     }
+  },
 
-    // already embed link
-    if (parsedUrl.pathname.includes("/embed/")) {
-      return url;
-    }
+  relatedTracks[]->{
+    _id,
+    trackTitle,
+    title
+  },
 
-    return "";
-  } catch (err) {
-    return "";
+  relatedAlbums[]->{
+    _id,
+    title
   }
-};
-
-// ✅ Same rich text parser style
-const plainTextDescription = (richText) => {
-  if (!richText?.content) return "";
-
-  return richText.content
-    .map((node) =>
-      node.content?.map((child) => child.value || "").join(" ") || ""
-    )
-    .join(" ")
-    .trim();
-};
+}
+`;
 
 export default function TVVideoPage() {
   const { id } = useParams();
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ✅ FETCH FROM SANITY
   useEffect(() => {
-    client
-      .getEntry(id)
-      .then((res) => {
-        setVideo(res);
+    const fetchVideo = async () => {
+      try {
+        const data = await sanity.fetch(query, { id });
+        setVideo(data);
+      } catch (err) {
+        console.error("Sanity fetch error:", err);
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
+      }
+    };
+
+    fetchVideo();
   }, [id]);
 
+  // ✅ Loading state
   if (loading) {
     return (
       <div className="text-center mt-10 text-adinkra-gold">
@@ -77,7 +92,8 @@ export default function TVVideoPage() {
     );
   }
 
-  if (!video || !video.fields) {
+  // ❌ Not found
+  if (!video) {
     return (
       <div className="text-center mt-10 text-red-400">
         Video not found.
@@ -93,17 +109,14 @@ export default function TVVideoPage() {
     );
   }
 
-  // ✅ Correct field name from Contentful (case-sensitive)
-  const { title, category, description, youTubeUrl } = video.fields;
-
-  const embedUrl = getEmbedUrl(youTubeUrl);
+  const embedUrl = getEmbedUrl(video.youtubeUrl);
 
   return (
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen flex flex-col">
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 py-12 flex-grow">
-        {/* Back */}
+        {/* BACK */}
         <div className="mb-6">
           <Link
             to="/gallery"
@@ -113,14 +126,14 @@ export default function TVVideoPage() {
           </Link>
         </div>
 
-        {/* Video */}
+        {/* VIDEO */}
         {embedUrl ? (
           <div className="aspect-video mb-8 rounded-2xl overflow-hidden shadow-2xl border border-adinkra-highlight/20">
             <iframe
               src={embedUrl}
               allowFullScreen
               className="w-full h-full border-none"
-              title={title || "Video"}
+              title={video.title || "Video"}
             />
           </div>
         ) : (
@@ -129,20 +142,23 @@ export default function TVVideoPage() {
           </div>
         )}
 
-        {/* Title */}
+        {/* TITLE */}
         <h1 className="text-3xl font-bold mb-3">
-          {title || "No title"}
+          {video.title || "Untitled"}
         </h1>
 
-        {/* Category */}
-        <p className="italic text-sm text-adinkra-gold/70 mb-6">
-          {category || "Uncategorized"}
-        </p>
+        {/* CATEGORY */}
+        {video.category && (
+          <p className="italic text-sm text-adinkra-gold/70 mb-6">
+            {video.category.replace("-", " ")}
+          </p>
+        )}
 
-        {/* Description */}
-        <div className="text-adinkra-gold/90 whitespace-pre-wrap leading-relaxed">
-          {plainTextDescription(description) ||
-            "No description available."}
+        {/* DESCRIPTION */}
+        <div className="text-adinkra-gold/90 leading-relaxed">
+          {renderPortableText(video.description) || (
+            <p>No description available.</p>
+          )}
         </div>
 
         {/* CTA */}

@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
-import { createClient } from "contentful";
 import Header from "../components/Header";
 import { Link } from "react-router-dom";
+import { sanity } from "../lib/sanity";
+import groq from "groq";
 
-const client = createClient({
-  space: import.meta.env.VITE_CONTENTFUL_SPACE_ID,
-  accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
-});
-
-// ✅ Robust YouTube embed parser
+// ✅ YouTube embed parser
 const getEmbedUrl = (url) => {
   if (!url) return "";
 
@@ -19,52 +15,96 @@ const getEmbedUrl = (url) => {
   return match ? `https://www.youtube.com/embed/${match[1]}` : "";
 };
 
-// ✅ Safe rich text extraction
-const plainTextDescription = (richText) => {
-  if (!richText?.content) return "";
+// ✅ Portable text renderer
+const renderPortableText = (blocks) => {
+  if (!blocks || !Array.isArray(blocks)) return null;
 
-  return richText.content
-    .map((node) =>
-      node.content?.map((child) => child.value || "").join(" ") || ""
-    )
-    .join(" ")
-    .trim()
-    .slice(0, 140);
+  return blocks.map((block, index) => {
+    if (block._type === "block") {
+      return (
+        <p key={block._key || index} className="mb-4 opacity-90">
+          {block.children?.map((child) => child.text).join(" ")}
+        </p>
+      );
+    }
+    return null;
+  });
 };
+
+// ✅ GROQ QUERY
+const query = groq`
+*[_type == "videoDemo"] | order(createdAt desc) {
+  _id,
+  title,
+  description,
+  category,
+  youtubeUrl,
+  featured,
+  premium,
+  createdAt,
+
+  thumbnail {
+    asset-> {
+      url
+    }
+  },
+
+  // Related content (optional future use)
+  relatedTracks[]->{
+    _id,
+    trackTitle,
+    title
+  },
+
+  relatedAlbums[]->{
+    _id,
+    title
+  }
+}
+`;
 
 export default function AdinkraGallery() {
   const [videos, setVideos] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
+  // ✅ FETCH FROM SANITY
   useEffect(() => {
-    client
-      .getEntries({ content_type: "tvVideo" })
-      .then((res) => setVideos(res.items || []))
-      .catch(console.error);
+    const fetchData = async () => {
+      try {
+        const data = await sanity.fetch(query);
+        setVideos(data);
+      } catch (err) {
+        console.error("Sanity fetch error:", err);
+      }
+    };
+
+    fetchData();
   }, []);
 
+  // ✅ Categories aligned with schema
   const categories = [
     "All",
-    "Film Scoring",
-    "Sound Design",
-    "Demo",
-    "Adinkra Original",
+    "foley",
+    "soundtracks",
+    "cinematic",
+    "ambient",
+    "world-traditional",
   ];
 
+  // ✅ FILTER
   const filteredVideos =
     selectedCategory === "All"
       ? videos
       : videos.filter(
           (video) =>
-            video.fields?.category &&
-            video.fields.category.toLowerCase() ===
-              selectedCategory.toLowerCase()
+            video.category &&
+            video.category.toLowerCase() === selectedCategory.toLowerCase()
         );
 
-  const featured = videos.find((video) => video.fields?.featured);
-
+  // ✅ FEATURED
+  const featured = videos.find((video) => video.featured);
   const nonFeaturedVideos = filteredVideos.filter(
-    (video) => !video.fields?.featured
+    (video) => !video.featured
   );
 
   return (
@@ -100,11 +140,11 @@ export default function AdinkraGallery() {
 
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl border border-adinkra-highlight/20">
-              {getEmbedUrl(featured.fields?.youtubeUrl) ? (
+              {getEmbedUrl(featured.youtubeUrl) ? (
                 <iframe
-                  src={getEmbedUrl(featured.fields.youtubeUrl)}
+                  src={getEmbedUrl(featured.youtubeUrl)}
                   className="w-full h-full"
-                  title={featured.fields?.title || "Featured Video"}
+                  title={featured.title || "Featured Video"}
                   allowFullScreen
                 />
               ) : (
@@ -116,13 +156,14 @@ export default function AdinkraGallery() {
 
             <div>
               <h3 className="text-2xl font-bold mb-4">
-                {featured.fields?.title || "Untitled"}
+                {featured.title || "Untitled"}
               </h3>
 
-              <p className="text-adinkra-gold/80 mb-6">
-                {plainTextDescription(featured.fields?.description) ||
-                  "Professional sound design and cinematic scoring."}
-              </p>
+              <div className="text-adinkra-gold/80 mb-6">
+                {renderPortableText(featured.description) || (
+                  <p>Professional sound design and cinematic scoring.</p>
+                )}
+              </div>
 
               <Link
                 to="/contact"
@@ -148,7 +189,9 @@ export default function AdinkraGallery() {
                   : "bg-adinkra-highlight/10 border-adinkra-highlight/30 hover:bg-adinkra-highlight/30"
               }`}
             >
-              {cat}
+              {cat === "All"
+                ? "All"
+                : cat.replace("-", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
             </button>
           ))}
         </div>
@@ -159,21 +202,19 @@ export default function AdinkraGallery() {
         {nonFeaturedVideos.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {nonFeaturedVideos.map((video) => {
-              const { title, thumbnail, category } = video.fields || {};
-              const imageUrl = thumbnail?.fields?.file?.url;
+              const imageUrl = video.thumbnail?.asset?.url;
 
               return (
                 <div
-                  key={video.sys.id}
+                  key={video._id}
                   className="group rounded-xl overflow-hidden"
                 >
-                  {/* Clickable video card */}
-                  <Link to={`/tv-video/${video.sys.id}`}>
+                  <Link to={`/tv-video/${video._id}`}>
                     <div className="aspect-video overflow-hidden relative rounded-xl">
                       {imageUrl ? (
                         <img
-                          src={`https:${imageUrl}`}
-                          alt={title || "Video"}
+                          src={imageUrl}
+                          alt={video.title || "Video"}
                           className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500"
                         />
                       ) : (
@@ -182,26 +223,23 @@ export default function AdinkraGallery() {
                         </div>
                       )}
 
-                      {/* Play icon */}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition">
                         <div className="text-white text-4xl">▶</div>
                       </div>
                     </div>
                   </Link>
 
-                  {/* Info BELOW (no blocking overlay) */}
                   <div className="mt-3 px-1">
                     <h4 className="text-sm font-semibold">
-                      {title || "Untitled"}
+                      {video.title || "Untitled"}
                     </h4>
 
-                    {category && (
+                    {video.category && (
                       <p className="text-xs text-adinkra-gold/70 italic">
-                        {category}
+                        {video.category.replace("-", " ")}
                       </p>
                     )}
 
-                    {/* CTA separate, not overlapping */}
                     <Link
                       to="/contact"
                       className="mt-3 inline-block text-xs bg-adinkra-highlight text-black font-semibold py-2 px-4 rounded hover:bg-yellow-500 transition"
@@ -215,7 +253,7 @@ export default function AdinkraGallery() {
           </div>
         ) : (
           <p className="text-center text-adinkra-gold/70 py-20">
-            No videos yet — upload your first demo in Contentful.
+            No videos yet — upload your first demo in Sanity.
           </p>
         )}
       </section>
