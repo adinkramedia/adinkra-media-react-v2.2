@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import Header from "../components/Header";
@@ -9,13 +9,61 @@ import CartDrawer from "../components/CartDrawer";
 import { sanity } from "../lib/sanity";
 import groq from "groq";
 
-// Simple portable text renderer for Sanity blocks
+// Lazy Waveform Player - only loads when expanded and in view
+function LazyWaveformPlayer({ audioUrl, ...props }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "100px", threshold: 0.1 }
+    );
+
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  if (!isVisible) {
+    return (
+      <div
+        ref={containerRef}
+        className="h-14 bg-zinc-900/80 rounded-2xl flex items-center px-6 overflow-hidden relative border border-white/5"
+      >
+        <div className="flex items-end gap-[3px] w-full h-8">
+          {Array.from({ length: 65 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-adinkra-gold/40 w-[2.5px] rounded-full animate-pulse"
+              style={{
+                height: `${30 + Math.random() * 70}%`,
+                animationDelay: `-${Math.random() * 1.6}s`,
+              }}
+            />
+          ))}
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center text-xs opacity-40 font-mono tracking-[2px]">
+          WAVEFORM
+        </div>
+      </div>
+    );
+  }
+
+  return <WaveformPlayer audioUrl={audioUrl} {...props} />;
+};
+
+// Simple portable text renderer
 const renderPortableText = (blocks) => {
   if (!blocks || !Array.isArray(blocks)) return null;
   return blocks.map((block, index) => {
     if (block._type === "block") {
       return (
-        <p key={block._key || index} className="mb-4 opacity-90">
+        <p key={block._key || index} className="mb-4 text-adinkra-gold/80 leading-relaxed">
           {block.children?.map((child) => child.text).join(" ")}
         </p>
       );
@@ -33,8 +81,6 @@ const query = groq`
   title,
   slug,
   category,
-
-  // audioTrack fields
   trackTitle,
   genre,
   mood,
@@ -42,40 +88,18 @@ const query = groq`
   duration,
   price,
   freeDownload,
-
-  coverImage {
-    asset-> { url }
-  },
-
-  // Preview Audio
-  previewAudio {
-    asset-> { url }
-  },
+  coverImage { asset-> { url } },
+  previewAudio { asset-> { url } },
   "previewAudioArray": previewAudio[].asset->url,
-
-  // Full Download for tracks
-  fullDownload {
-    asset-> { url }
-  },
-
-  // Album download links
+  fullDownload { asset-> { url } },
   downloadUrls[],
-
-  // Album fields
   description,
   affiliateLinks,
-  tracks[]->{
-    _id,
-    title,
-    trackTitle
-  },
+  tracks[]->{ _id, title, trackTitle },
   totalFiles,
   releaseDate,
   packGenre,
-
-  album->{
-    title
-  }
+  album->{ title }
 }
 `;
 
@@ -95,17 +119,15 @@ const licensingFaqs = [
   },
 ];
 
-// Combined category list from both schemas (value → display title)
+// Categories
 const allCategories = [
   { value: "All", title: "All" },
-  // Audio Tracks
   { value: "music", title: "Music" },
   { value: "scores-cinematic", title: "Scores and Cinematic" },
   { value: "meditation", title: "Meditation" },
   { value: "world-traditional", title: "World and Traditional" },
   { value: "sound-effects", title: "Sound Effects" },
   { value: "ambient", title: "Ambient" },
-  // Albums / Packs
   { value: "drum-pack", title: "Drum Pack" },
   { value: "ambient-pack", title: "Ambient Pack" },
   { value: "traditional-instruments", title: "Traditional Instruments" },
@@ -127,7 +149,7 @@ function AudioContent() {
 
   const { addToCart, cartItems, clearCart } = useCart();
 
-  // ================= FETCH =================
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -141,26 +163,20 @@ function AudioContent() {
         console.error("Sanity fetch error:", err);
       }
     };
-
     fetchData();
   }, []);
 
-  // ================= LIKES =================
   const fetchLikeCount = async (slug) => {
     const { data } = await supabase
       .from("likes")
       .select("count")
       .eq("slug", slug)
       .maybeSingle();
-
-    if (data) {
-      setLikes((prev) => ({ ...prev, [slug]: data.count || 0 }));
-    }
+    if (data) setLikes((prev) => ({ ...prev, [slug]: data.count || 0 }));
   };
 
   const handleLike = async (slug) => {
     setLoadingLikes((prev) => ({ ...prev, [slug]: true }));
-
     const { data: existing } = await supabase
       .from("likes")
       .select("id, count")
@@ -168,31 +184,25 @@ function AudioContent() {
       .maybeSingle();
 
     if (existing) {
-      await supabase
-        .from("likes")
-        .update({ count: existing.count + 1 })
-        .eq("id", existing.id);
+      await supabase.from("likes").update({ count: existing.count + 1 }).eq("id", existing.id);
       setLikes((prev) => ({ ...prev, [slug]: existing.count + 1 }));
     } else {
       await supabase.from("likes").insert({ slug, type: "audio", count: 1 });
       setLikes((prev) => ({ ...prev, [slug]: 1 }));
     }
-
     setLoadingLikes((prev) => ({ ...prev, [slug]: false }));
   };
 
-  // ================= FILTERING =================
+  // Filtering
   const filteredItems = items.filter((item) => {
     const f = item;
     if (selectedCategory !== "All" && f.category !== selectedCategory) return false;
-
     if (!searchQuery) return true;
 
     const q = searchQuery.toLowerCase();
     const genreMatch = Array.isArray(f.genre)
       ? f.genre.some((g) => g.toLowerCase().includes(q))
       : (f.genre || "").toLowerCase().includes(q);
-
     const moodMatch = Array.isArray(f.mood)
       ? f.mood.some((m) => m.toLowerCase().includes(q))
       : (f.mood || "").toLowerCase().includes(q);
@@ -207,22 +217,16 @@ function AudioContent() {
   const singles = filteredItems.filter((item) => item._type === "audioTrack");
   const albums = filteredItems.filter((item) => item._type === "album");
 
-  // ================= ADD TO CART / DOWNLOAD =================
   const handleAddOrDownload = (item) => {
     const f = item;
     const contentType = item._type;
     const isFree = f.freeDownload === true;
 
     let downloadUrls = [];
-
     if (contentType === "audioTrack") {
-      if (f.fullDownload?.asset?.url) {
-        downloadUrls = [f.fullDownload.asset.url];
-      }
+      if (f.fullDownload?.asset?.url) downloadUrls = [f.fullDownload.asset.url];
     } else if (contentType === "album") {
-      if (Array.isArray(f.downloadUrls)) {
-        downloadUrls = f.downloadUrls.filter(Boolean);
-      }
+      if (Array.isArray(f.downloadUrls)) downloadUrls = f.downloadUrls.filter(Boolean);
     }
 
     if (downloadUrls.length === 0) {
@@ -261,9 +265,8 @@ function AudioContent() {
     navigate(`/downloads?slugs=${purchasedSlugs.join(",")}`);
   };
 
-  // ================= HELPERS =================
   const getTitle = (f) => f.trackTitle || f.title || "Untitled";
-  const getCoverUrl = (f) => f.coverImage?.asset?.url || null;
+  const getCoverUrl = (f) => f.coverImage?.asset?.url || "/placeholder.jpg";
 
   const getPreviewUrls = (f) => {
     if (f._type === "audioTrack") {
@@ -306,147 +309,171 @@ function AudioContent() {
     return cat ? cat.title : value;
   };
 
-  // ================= RENDER =================
   return (
-    <div className="bg-adinkra-bg text-adinkra-gold min-h-screen flex flex-col w-full">
+    <div className="bg-adinkra-bg text-adinkra-gold min-h-screen">
       <Header />
 
-      {/* HERO */}
-      <section className="relative w-full h-[60vh] overflow-hidden">
+      {/* Premium Hero */}
+      <section className="relative h-[60vh] flex items-center justify-center overflow-hidden">
         <video
-          autoPlay loop muted playsInline
-          className="absolute inset-0 w-full h-full object-cover hidden md:block"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
           src="/audio-hero-desktop.mp4"
         />
-        <video
-          autoPlay loop muted playsInline
-          className="absolute inset-0 w-full h-full object-cover md:hidden"
-          src="/audio-hero-mobile.mp4"
-        />
-        <div className="absolute inset-0 bg-black/60 flex flex-col justify-center items-center text-center px-6">
-          <h1 className="text-5xl md:text-6xl font-bold mb-4 drop-shadow-2xl">Adinkra Audio</h1>
-          <p className="text-lg md:text-xl max-w-4xl opacity-95 leading-relaxed">
-            Explore exclusive scores, loops, and cinematic soundscapes.
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/70 to-adinkra-bg" />
+        <div className="relative z-10 text-center px-6 max-w-4xl">
+          <h1 className="text-6xl md:text-7xl font-bold tracking-tighter mb-4">
+            Adinkra <span className="text-adinkra-highlight">Audio</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-adinkra-gold/70">
+            Premium royalty-free music & cinematic soundscapes
           </p>
         </div>
       </section>
 
-      {/* SEARCH */}
-      <div className="w-full px-6 mt-10 flex justify-center">
-        <input
-          type="text"
-          placeholder="Search tracks, albums, genres..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full max-w-4xl px-5 py-3 rounded-full text-black focus:outline-none"
-        />
-      </div>
+      {/* Sticky Controls */}
+      <div className="sticky top-0 z-40 bg-adinkra-bg/95 backdrop-blur-lg border-b border-adinkra-highlight/10">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row gap-4">
+          <input
+            type="text"
+            placeholder="Search by title, genre, mood..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-zinc-900 border border-white/10 focus:border-adinkra-highlight rounded-2xl px-6 py-4 text-lg placeholder:text-adinkra-gold/40 focus:outline-none transition-all"
+          />
 
-      {/* CATEGORY FILTER */}
-      <div className="w-full px-6 mt-8 flex justify-center">
-        <details className="w-full max-w-4xl bg-adinkra-highlight/10 border border-adinkra-highlight/30 rounded-lg">
-          <summary className="px-6 py-3 font-medium cursor-pointer flex justify-between items-center">
-            <span>
-              Filter by Category{" "}
-              {selectedCategory !== "All" ? `(${getCategoryTitle(selectedCategory)})` : ""}
-            </span>
-            <span>▼</span>
-          </summary>
-          <div className="px-6 pb-6 pt-2 flex flex-wrap gap-3">
-            {allCategories.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setSelectedCategory(cat.value)}
-                className={`px-5 py-2.5 rounded-full text-sm font-medium border transition-colors ${
-                  cat.value === selectedCategory
-                    ? "bg-adinkra-highlight text-adinkra-bg"
-                    : "bg-adinkra-highlight/10 border-adinkra-highlight/30 hover:bg-adinkra-highlight/20"
-                }`}
-              >
-                {cat.title}
-              </button>
-            ))}
-          </div>
-        </details>
-      </div>
-
-      {/* SINGLE TRACKS SECTION */}
-      <section className="w-full px-6 mt-12">
-        <h2 className="text-3xl font-bold mb-6 text-center md:text-left">Single Tracks</h2>
-        {singles.length === 0 ? (
-          <p className="text-center opacity-70">No tracks found in this category.</p>
-        ) : (
-          <div className="flex flex-col gap-6">
-            {singles.map((item) => {
-              const f = item;
-              const slug = f.slug?.current || item._id;
-              const cover = getCoverUrl(f);
-              const previewUrls = getPreviewUrls(f);
-              const preview = previewUrls[0] || null;
-              const priceStr = getPriceDisplay(f);
-              const meta = getMetadata(f, "audioTrack");
-
-              return (
-                <div
-                  key={slug}
-                  className="flex flex-col md:flex-row items-center gap-6 border-b border-adinkra-highlight/20 pb-6"
+          <details className="md:w-80 bg-zinc-900 border border-white/10 rounded-2xl">
+            <summary className="px-6 py-4 cursor-pointer flex justify-between items-center text-lg">
+              {getCategoryTitle(selectedCategory)}
+              <span>▼</span>
+            </summary>
+            <div className="p-4 grid grid-cols-2 gap-2">
+              {allCategories.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setSelectedCategory(cat.value)}
+                  className={`px-5 py-3 rounded-xl text-left transition-all ${
+                    cat.value === selectedCategory
+                      ? "bg-adinkra-highlight text-black font-medium"
+                      : "hover:bg-white/5"
+                  }`}
                 >
-                  <div className="w-24 h-24 flex-shrink-0">
-                    <img
-                      src={cover || "/placeholder.jpg"}
-                      alt={getTitle(f)}
-                      className="w-full h-full object-cover rounded"
-                    />
-                  </div>
+                  {cat.title}
+                </button>
+              ))}
+            </div>
+          </details>
+        </div>
+      </div>
 
-                  <div className="flex flex-col w-full md:w-80">
-                    <div className="font-semibold text-lg">{getTitle(f)}</div>
-                    <div className="text-xs opacity-70 mt-1 flex flex-wrap gap-3">
-                      {meta.map((m, i) => <span key={i}>{m}</span>)}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 w-full min-h-[40px]">
-                    {preview ? (
-                      <WaveformPlayer audioUrl={preview} />
-                    ) : (
-                      <div className="h-10 flex items-center justify-center bg-black/30 rounded text-sm opacity-70 italic">
-                        No preview available
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <span className="font-bold text-lg">{priceStr}</span>
-                    <button
-                      onClick={() => handleLike(slug)}
-                      disabled={loadingLikes[slug]}
-                      className="bg-adinkra-highlight/15 px-3 py-1 rounded"
-                    >
-                      ♡ {likes[slug] || 0}
-                    </button>
-                    <button
-                      onClick={() => handleAddOrDownload(item)}
-                      className="bg-adinkra-highlight px-5 py-2.5 rounded hover:bg-yellow-500 text-adinkra-bg font-medium"
-                    >
-                      {f.freeDownload ? "Download" : "Add to Cart"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* SINGLE TRACKS */}
+        <section className="mb-20">
+          <div className="flex items-end justify-between mb-8">
+            <h2 className="text-4xl font-bold tracking-tight">Single Tracks</h2>
+            <span className="text-adinkra-gold/60 text-lg font-light">{singles.length} tracks</span>
           </div>
-        )}
-      </section>
 
-      {/* SAMPLE PACKS / ALBUMS SECTION */}
-      <section className="w-full px-6 mt-16">
-        <h2 className="text-3xl font-bold mb-6 text-center md:text-left">Collections</h2>
-        {albums.length === 0 ? (
-          <p className="text-center opacity-70">No packs found in this category.</p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {albums.map((item) => {
+          {singles.length === 0 ? (
+            <p className="text-center py-20 text-adinkra-gold/50">No tracks found in this category.</p>
+          ) : (
+            <div className="space-y-6">
+              {singles.map((item) => {
+                const f = item;
+                const slug = f.slug?.current || item._id;
+                const cover = getCoverUrl(f);
+                const preview = getPreviewUrls(f)[0] || null;
+                const priceStr = getPriceDisplay(f);
+                const meta = getMetadata(f, "audioTrack");
+
+                return (
+                  <details
+                    key={slug}
+                    className="group bg-zinc-900/80 border border-white/10 hover:border-adinkra-highlight/40 rounded-3xl overflow-hidden transition-all duration-300 shadow-sm"
+                  >
+                    <summary className="px-8 py-8 cursor-pointer flex flex-col md:flex-row md:items-center gap-6 hover:bg-white/5 transition-all list-none">
+                      <div className="w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden shadow-xl ring-1 ring-white/10">
+                        <img
+                          src={cover}
+                          alt={getTitle(f)}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-2xl font-semibold group-hover:text-adinkra-highlight transition-colors tracking-tight">
+                          {getTitle(f)}
+                        </h3>
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          {meta.map((m, i) => (
+                            <span key={i} className="text-xs uppercase tracking-widest bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="text-right md:text-left flex-shrink-0">
+                        <div className="text-3xl font-bold text-adinkra-highlight tabular-nums">{priceStr}</div>
+                      </div>
+                    </summary>
+
+                    <div className="px-8 pb-10 border-t border-white/10 bg-zinc-950/50">
+                      <div className="pt-8">
+                        {preview ? (
+                          <div className="mb-10">
+                            <h4 className="uppercase tracking-[3px] text-xs text-adinkra-gold/60 mb-4 font-mono">PREVIEW</h4>
+                            <LazyWaveformPlayer audioUrl={preview} />
+                          </div>
+                        ) : (
+                          <div className="h-14 flex items-center justify-center bg-zinc-950 rounded-2xl text-sm opacity-60 border border-white/5">
+                            No preview available
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row gap-6 justify-between items-center pt-8 border-t border-white/10">
+                          <div>
+                            <div className="text-sm text-adinkra-gold/60">Price</div>
+                            <div className="text-4xl font-bold tabular-nums">{priceStr}</div>
+                          </div>
+
+                          <div className="flex gap-4">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleLike(slug); }}
+                              disabled={loadingLikes[slug]}
+                              className="px-8 py-3.5 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center gap-3 transition-all text-sm font-medium"
+                            >
+                              ♡ <span className="tabular-nums">{likes[slug] || 0}</span>
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleAddOrDownload(item); }}
+                              className="px-10 py-3.5 bg-adinkra-highlight hover:bg-yellow-400 active:bg-yellow-500 text-black font-semibold rounded-2xl transition-all shadow-sm"
+                            >
+                              {f.freeDownload ? "Download Now" : "Add to Cart"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* COLLECTIONS & SAMPLE PACKS - EXCLUSIVE ACCORDION */}
+        <section>
+          <div className="flex items-end justify-between mb-8">
+            <h2 className="text-4xl font-bold tracking-tight">Collections & Sample Packs</h2>
+            <span className="text-adinkra-gold/60 text-lg font-light">{albums.length} packs</span>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {albums.map((item, index) => {
               const f = item;
               const slug = f.slug?.current || item._id;
               const cover = getCoverUrl(f);
@@ -458,74 +485,70 @@ function AudioContent() {
               return (
                 <details
                   key={slug}
-                  className="bg-black/20 rounded-xl border border-adinkra-highlight/30 overflow-hidden"
+                  name="collection-accordion"
+                  className="group bg-zinc-900/80 border border-white/10 hover:border-adinkra-highlight/40 rounded-3xl overflow-hidden transition-all duration-300 shadow-sm"
                 >
-                  <summary className="px-6 py-5 cursor-pointer flex flex-col md:flex-row md:items-center gap-4 md:gap-6 hover:bg-black/30 transition-colors">
-                    <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0">
-                      <img
-                        src={cover || "/placeholder.jpg"}
-                        alt={getTitle(f)}
-                        className="w-full h-full object-cover rounded-lg shadow"
+                  <summary className="px-8 py-8 cursor-pointer flex flex-col md:flex-row gap-6 hover:bg-white/5 transition-all list-none">
+                    <div className="w-28 h-28 flex-shrink-0 rounded-2xl overflow-hidden shadow-xl ring-1 ring-white/10">
+                      <img 
+                        src={cover} 
+                        alt={getTitle(f)} 
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" 
                       />
                     </div>
                     <div className="flex-1">
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                        <div>
-                          <h3 className="text-xl font-bold">{getTitle(f)}</h3>
-                          <span className="inline-block mt-1 text-xs bg-adinkra-highlight text-black px-2.5 py-1 rounded-full">
-                            SAMPLE PACK
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold">{priceStr}</div>
-                          {isFree && <div className="text-sm text-green-400">Free</div>}
-                        </div>
+                      <div className="flex items-start justify-between">
+                        <h3 className="text-2xl font-semibold group-hover:text-adinkra-highlight transition-colors tracking-tight pr-4">
+                          {getTitle(f)}
+                        </h3>
+                        <span className="text-xs bg-adinkra-highlight text-black px-4 py-1.5 rounded-full font-medium tracking-wider self-start">PACK</span>
                       </div>
-                      <div className="mt-2 text-sm opacity-80 flex flex-wrap gap-3">
+                      <div className="flex flex-wrap gap-2 mt-4">
                         {meta.map((m, i) => (
-                          <span key={i} className="bg-black/30 px-3 py-1 rounded">
+                          <span key={i} className="text-xs uppercase tracking-widest bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
                             {m}
                           </span>
                         ))}
                         {f.releaseDate && (
-                          <span className="bg-black/30 px-3 py-1 rounded">
-                            Released: {new Date(f.releaseDate).toLocaleDateString()}
+                          <span className="text-xs uppercase tracking-widest bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
+                            {new Date(f.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
                           </span>
                         )}
                       </div>
                     </div>
                   </summary>
 
-                  <div className="px-6 pb-6 pt-2 border-t border-adinkra-highlight/20">
-                    <div className="flex flex-col gap-8">
+                  <div className="px-8 pb-10 border-t border-white/10 bg-zinc-950/50">
+                    <div className="pt-8 space-y-10">
                       {previewUrls.length > 0 && (
                         <div>
-                          <h4 className="font-semibold mb-3 text-lg">Previews</h4>
-                          <div className="space-y-6">
+                          <h4 className="uppercase tracking-[3px] text-xs text-adinkra-gold/60 mb-4 font-mono">PREVIEWS</h4>
+                          <div className="space-y-8">
                             {previewUrls.map((url, idx) => (
-                              <WaveformPlayer key={idx} audioUrl={url} />
+                              <LazyWaveformPlayer key={idx} audioUrl={url} />
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                      <div className="flex flex-col sm:flex-row gap-6 justify-between items-center pt-6 border-t border-white/10">
                         <div>
-                          <div className="text-lg font-semibold">Price</div>
-                          <div className="text-3xl font-bold">{priceStr}</div>
-                          {isFree && <div className="text-green-400">Free Download</div>}
+                          <div className="text-sm text-adinkra-gold/60">Price</div>
+                          <div className="text-4xl font-bold tabular-nums">{priceStr}</div>
+                          {isFree && <div className="text-green-400 mt-1 text-sm">✓ Free Download</div>}
                         </div>
+
                         <div className="flex gap-4">
                           <button
-                            onClick={() => handleLike(slug)}
+                            onClick={(e) => { e.stopPropagation(); handleLike(slug); }}
                             disabled={loadingLikes[slug]}
-                            className="bg-adinkra-highlight/30 px-5 py-2.5 rounded"
+                            className="px-8 py-3.5 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center gap-3 transition-all text-sm font-medium"
                           >
-                            ♡ {likes[slug] || 0}
+                            ♡ <span className="tabular-nums">{likes[slug] || 0}</span>
                           </button>
                           <button
-                            onClick={() => handleAddOrDownload(item)}
-                            className="bg-adinkra-highlight px-6 py-2.5 rounded hover:bg-yellow-500 text-adinkra-bg font-medium"
+                            onClick={(e) => { e.stopPropagation(); handleAddOrDownload(item); }}
+                            className="px-10 py-3.5 bg-adinkra-highlight hover:bg-yellow-400 active:bg-yellow-500 text-black font-semibold rounded-2xl transition-all shadow-sm"
                           >
                             {isFree ? "Download Now" : "Add to Cart"}
                           </button>
@@ -533,31 +556,9 @@ function AudioContent() {
                       </div>
 
                       {f.description && (
-                        <div className="prose prose-invert max-w-none">
-                          <h4 className="font-semibold text-lg mb-3">Description</h4>
+                        <div className="prose prose-invert max-w-none text-adinkra-gold/80">
+                          <h4 className="font-semibold text-lg mb-4 text-white">Description</h4>
                           {renderPortableText(f.description)}
-                        </div>
-                      )}
-
-                      {Array.isArray(f.tracks) && f.tracks.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-lg mb-3">
-                            Tracks Included ({f.tracks.length})
-                          </h4>
-                          <ul className="list-disc pl-6 space-y-1.5 text-sm opacity-90">
-                            {f.tracks.map((track, idx) => (
-                              <li key={idx}>
-                                {track.trackTitle || track.title || `Track ${idx + 1}`}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {f.affiliateLinks && (
-                        <div className="prose prose-invert max-w-none">
-                          <h4 className="font-semibold text-lg mb-3">More Info / Affiliates</h4>
-                          {renderPortableText(f.affiliateLinks)}
                         </div>
                       )}
                     </div>
@@ -566,25 +567,25 @@ function AudioContent() {
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      </main>
 
       {/* FAQ */}
-      <div className="mt-16 mb-16 w-full px-6 flex justify-center">
-        <div className="w-full max-w-4xl">
-          <AccordionFaq title="Adinkra Audio Licensing FAQ" faqs={licensingFaqs} />
-        </div>
+      <div className="max-w-4xl mx-auto px-6 py-20">
+        <AccordionFaq title="Adinkra Audio Licensing FAQ" faqs={licensingFaqs} />
       </div>
 
+      {/* Toast */}
       {cartToast && (
-        <div className="fixed bottom-24 right-6 bg-adinkra-highlight text-adinkra-bg px-5 py-3 rounded-xl shadow-xl font-semibold animate-bounce z-50">
+        <div className="fixed bottom-24 right-6 bg-adinkra-highlight text-adinkra-bg px-6 py-4 rounded-2xl shadow-2xl font-semibold z-50">
           ✓ Added to Cart
         </div>
       )}
 
+      {/* Floating Cart Button */}
       <button
         onClick={() => setCartOpen(true)}
-        className="fixed bottom-6 right-6 bg-adinkra-highlight text-adinkra-bg px-6 py-3 rounded-full shadow-xl font-semibold"
+        className="fixed bottom-6 right-6 bg-adinkra-highlight hover:bg-yellow-400 active:bg-yellow-500 text-adinkra-bg px-7 py-4 rounded-2xl shadow-2xl font-semibold flex items-center gap-3 transition-all z-50"
       >
         🛒 Cart ({cartItems.length})
       </button>
