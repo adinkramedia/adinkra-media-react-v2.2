@@ -8,7 +8,7 @@ import CartDrawer from "../components/CartDrawer";
 import { sanity } from "../lib/sanity";
 import groq from "groq";
 
-// Simple portable text renderer
+// Simple portable text renderer (unchanged)
 const renderPortableText = (blocks) => {
   if (!blocks || !Array.isArray(blocks)) return null;
   return blocks.map((block, index) => {
@@ -60,6 +60,7 @@ const query = groq`
 }
 `;
 
+// Licensing FAQs (unchanged)
 const licensingFaqs = [
   {
     question: "Can I use these tracks commercially?",
@@ -75,6 +76,7 @@ const licensingFaqs = [
   },
 ];
 
+// Categories (unchanged)
 const allCategories = [
   { value: "All", title: "All" },
   { value: "music", title: "Music" },
@@ -92,9 +94,10 @@ const allCategories = [
   { value: "drum-library", title: "Libraries" },
 ];
 
-// Standalone Audio Player - No external dependencies
-function StandaloneAudioPlayer({ audioUrl }) {
+// Simple Custom Audio Player (no waveform, fast, anti-download)
+function SimpleAudioPlayer({ audioUrl, onPlayStateChange }) {
   const audioRef = useRef(null);
+  const progressRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -109,86 +112,106 @@ function StandaloneAudioPlayer({ audioUrl }) {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !audioUrl) return;
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
+    const handleCanPlay = () => {
+      setDuration(audio.duration || 0);
       setIsLoaded(true);
+      audio.play().catch((e) => console.log("Autoplay prevented:", e));
     };
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleEnded = () => setIsPlaying(false);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      onPlayStateChange?.(false);
+    };
 
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
 
+    audio.load();
+
     return () => {
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.pause();
+      audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, []);
+  }, [audioUrl, onPlayStateChange]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
-    if (!audio || !isLoaded) return;
-
+    if (!audio) return;
     if (isPlaying) {
       audio.pause();
-      setIsPlaying(false);
     } else {
-      // Pause all other audio elements first
-      document.querySelectorAll('audio').forEach(a => {
-        if (a !== audio) {
-          a.pause();
-          a.currentTime = 0;
-        }
-      });
-      
-      audio.play().then(() => {
-        setIsPlaying(true);
-      }).catch(e => console.log("Play failed:", e));
+      audio.play();
     }
   };
 
   const seek = (e) => {
     const audio = audioRef.current;
-    if (!audio || !duration) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
+    const bar = progressRef.current;
+    if (!audio || !bar || !duration) return;
+
+    const rect = bar.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     audio.currentTime = percent * duration;
   };
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onPlayEvt = () => { setIsPlaying(true); onPlayStateChange?.(true); };
+    const onPauseEvt = () => { setIsPlaying(false); onPlayStateChange?.(false); };
+
+    audio.addEventListener("play", onPlayEvt);
+    audio.addEventListener("pause", onPauseEvt);
+
+    return () => {
+      audio.removeEventListener("play", onPlayEvt);
+      audio.removeEventListener("pause", onPauseEvt);
+    };
+  }, [onPlayStateChange]);
+
+  const preventDownload = (e) => e.preventDefault();
+
   return (
-    <div className="w-full flex items-center gap-3 bg-zinc-950/50 p-3 rounded-lg">
-      <audio ref={audioRef} src={audioUrl} preload="metadata" />
-      
+    <div className="w-full flex items-center gap-4" onContextMenu={preventDownload}>
+      <audio 
+        ref={audioRef} 
+        src={audioUrl} 
+        preload="metadata"
+        controlsList="nodownload"
+        style={{ display: "none" }}
+      />
+
       <button
         onClick={togglePlay}
-        disabled={!isLoaded}
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
           isPlaying 
             ? "bg-adinkra-highlight text-adinkra-bg" 
             : "bg-adinkra-gold/20 text-adinkra-gold hover:bg-adinkra-highlight hover:text-adinkra-bg"
-        } ${!isLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+        }`}
       >
         {isPlaying ? (
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <rect x="6" y="4" width="4" height="16" />
             <rect x="14" y="4" width="4" height="16" />
           </svg>
         ) : (
-          <svg className="w-3 h-3 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z" />
           </svg>
         )}
       </button>
 
-      <div className="flex-1 flex items-center gap-2">
+      <div className="flex-1 flex items-center gap-3">
         <div 
-          className="flex-1 h-1.5 bg-white/10 rounded-full cursor-pointer relative overflow-hidden"
+          ref={progressRef}
+          className="flex-1 h-1 bg-white/20 rounded-full cursor-pointer relative"
           onClick={seek}
         >
           <div 
@@ -196,15 +219,16 @@ function StandaloneAudioPlayer({ audioUrl }) {
             style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
           />
         </div>
-        <span className="text-xs text-adinkra-gold/60 font-mono whitespace-nowrap">
+
+        <div className="text-xs text-adinkra-gold/60 font-mono whitespace-nowrap">
           {formatTime(currentTime)} / {formatTime(duration)}
-        </span>
+        </div>
       </div>
     </div>
   );
 }
 
-// Track Row Component
+// Track Row Component - Mobile Friendly
 function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, onAddToCart }) {
   const f = item;
   const slug = f.slug?.current || item._id;
@@ -249,6 +273,7 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
         <img src={cover} alt={title} className="w-full h-full object-cover" />
       </div>
 
+      {/* Mobile: Stack title and artist vertically, allow text to wrap */}
       <div className="flex-1 min-w-0">
         <div className={`font-medium text-sm md:text-base leading-tight ${isPlaying ? 'text-adinkra-highlight' : 'text-white'} break-words`}>
           {title}
@@ -310,8 +335,8 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
   );
 }
 
-// Album Accordion with Built-in Player
-function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
+// Album/Pack Detail Accordion Component
+function AlbumAccordion({ item, isPlaying, onPlay, likes, onLike, loadingLike, onAddToCart }) {
   const [isOpen, setIsOpen] = useState(false);
   const f = item;
   const slug = f.slug?.current || item._id;
@@ -323,6 +348,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
   const trackCount = f.totalFiles || (Array.isArray(f.tracks) ? f.tracks.length : 0);
   const genre = Array.isArray(f.packGenre) ? f.packGenre[0] : f.packGenre;
   
+  // Format arrays
   const formatArray = (arr) => {
     if (!arr) return [];
     if (Array.isArray(arr)) return arr;
@@ -335,7 +361,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
 
   return (
     <div className="bg-zinc-900/50 rounded-2xl border border-white/5 overflow-hidden">
-      {/* Header */}
+      {/* Header - Always visible */}
       <div 
         className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
@@ -399,17 +425,22 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
 
       {/* Expanded Content */}
       {isOpen && (
-        <div className="border-t border-white/10 p-4 md:p-6 space-y-6">
-          {/* Preview Players - Each with their own isolated player */}
+        <div className="border-t border-white/10 p-4 md:p-6 space-y-6 animate-in slide-in-from-top-2">
+          {/* Preview Player */}
           {previewUrls.length > 0 && (
-            <div className="bg-zinc-950/30 rounded-xl p-4">
-              <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-3">Preview Audio ({previewUrls.length})</h4>
+            <div className="bg-zinc-950/50 rounded-xl p-4">
+              <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-3">Preview Audio</h4>
               <div className="space-y-3">
                 {previewUrls.map((url, idx) => (
                   <div key={idx} className="flex items-center gap-3">
-                    <span className="text-xs text-adinkra-gold/60 w-6 font-mono">{idx + 1}</span>
+                    <span className="text-xs text-adinkra-gold/60 w-6">{idx + 1}</span>
                     <div className="flex-1">
-                      <StandaloneAudioPlayer audioUrl={url} />
+                      <SimpleAudioPlayer 
+                        audioUrl={url} 
+                        onPlayStateChange={(playing) => {
+                          if (playing) onPlay();
+                        }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -418,7 +449,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
           )}
 
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Left Column */}
+            {/* Left Column - Details */}
             <div className="space-y-4">
               <div>
                 <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-2">Description</h4>
@@ -449,7 +480,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
               </div>
             </div>
 
-            {/* Right Column */}
+            {/* Right Column - Genres & Actions */}
             <div className="space-y-4">
               {packGenres.length > 0 && (
                 <div>
@@ -469,12 +500,18 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                   <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-2">Download Files</h4>
                   <div className="space-y-2">
                     {downloadUrls.map((url, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-adinkra-gold/60">
+                      <a 
+                        key={idx}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-adinkra-gold/60 hover:text-adinkra-highlight transition-colors break-all"
+                      >
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         <span className="truncate">{url.split('/').pop() || `File ${idx + 1}`}</span>
-                      </div>
+                      </a>
                     ))}
                   </div>
                 </div>
@@ -521,6 +558,7 @@ function AudioContent() {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartToast, setCartToast] = useState(false);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const [activePreview, setActivePreview] = useState(null);
 
   const { addToCart, cartItems, clearCart } = useCart();
 
@@ -593,13 +631,10 @@ function AudioContent() {
   const handlePlay = (id, audioUrl) => {
     if (currentlyPlaying === id) {
       setCurrentlyPlaying(null);
+      setActivePreview(null);
     } else {
-      // Stop all other audio first
-      document.querySelectorAll('audio').forEach(a => {
-        a.pause();
-        a.currentTime = 0;
-      });
       setCurrentlyPlaying(id);
+      setActivePreview(audioUrl);
     }
   };
 
@@ -725,6 +760,19 @@ function AudioContent() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-32">
+        {activePreview && (
+          <div className="fixed bottom-20 left-0 right-0 z-40 bg-zinc-900/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
+            <div className="max-w-7xl mx-auto">
+              <SimpleAudioPlayer 
+                audioUrl={activePreview} 
+                onPlayStateChange={(playing) => {
+                  if (!playing) setCurrentlyPlaying(null);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* SINGLE TRACKS */}
         {singles.length > 0 && (
           <section className="mb-12">
@@ -774,6 +822,8 @@ function AudioContent() {
                 <AlbumAccordion
                   key={item._id}
                   item={item}
+                  isPlaying={currentlyPlaying === item._id}
+                  onPlay={() => handlePlay(item._id, getPreviewUrl(item))}
                   likes={likes}
                   onLike={handleLike}
                   loadingLike={loadingLikes}
