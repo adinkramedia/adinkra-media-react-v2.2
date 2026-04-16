@@ -3,7 +3,12 @@ import WaveSurfer from "wavesurfer.js";
 
 let currentActiveWave = null;
 
-export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateChange }) {
+export default function WaveformPlayer({ 
+  audioUrl, 
+  compact = false, 
+  autoPlayOnReady = false,   // ← NEW
+  onPlayStateChange 
+}) {
   const containerRef = useRef(null);
   const waveRef = useRef(null);
   const resizeTimeoutRef = useRef(null);
@@ -15,7 +20,6 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
 
-  // 🔥 Lazy initialize WaveSurfer (ONLY when needed)
   const initWaveSurfer = useCallback(() => {
     if (!audioUrl || !containerRef.current || waveRef.current) return;
 
@@ -41,14 +45,17 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
 
     waveRef.current = wave;
 
-    // ✅ Ready
     wave.on("ready", () => {
       setIsReady(true);
       setDuration(wave.getDuration());
       wave.drawBuffer();
+
+      // 🔥 AUTO-PLAY when a new track is selected from the list
+      if (autoPlayOnReady) {
+        wave.play();
+      }
     });
 
-    // ✅ Play
     wave.on("play", () => {
       if (currentActiveWave && currentActiveWave !== wave) {
         currentActiveWave.pause();
@@ -56,23 +63,20 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
       }
       currentActiveWave = wave;
       setIsPlaying(true);
-      onPlayStateChange && onPlayStateChange(true);
+      onPlayStateChange?.(true);
     });
 
-    // ✅ Pause
     wave.on("pause", () => {
       setIsPlaying(false);
-      onPlayStateChange && onPlayStateChange(false);
+      onPlayStateChange?.(false);
     });
 
-    // ✅ Finish
     wave.on("finish", () => {
       setIsPlaying(false);
       wave.seekTo(0);
-      onPlayStateChange && onPlayStateChange(false);
+      onPlayStateChange?.(false);
     });
 
-    // 🔥 Throttled audioprocess (BIG FIX)
     wave.on("audioprocess", () => {
       const now = Date.now();
       if (now - lastUpdateRef.current > 300) {
@@ -81,29 +85,22 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
       }
     });
 
-    wave.on("error", (err) => {
-      console.error("WaveSurfer error:", err);
-    });
+    wave.on("error", (err) => console.error("WaveSurfer error:", err));
 
-    // 🔥 Load the audio immediately when WaveSurfer is created
-    // This fixes the "have to press play twice" issue
+    // Load immediately
     wave.load(audioUrl);
-
     setIsInitialized(true);
-  }, [audioUrl, compact, onPlayStateChange]);
+  }, [audioUrl, compact, autoPlayOnReady, onPlayStateChange]);
 
-  // 🔥 Auto-initialize when component mounts (key change)
+  // Auto-init when audioUrl changes (fresh mount for every new track)
   useEffect(() => {
-    if (audioUrl) {
-      initWaveSurfer();
-    }
+    if (audioUrl) initWaveSurfer();
   }, [audioUrl, initWaveSurfer]);
 
-  // 🔥 Resize (debounced)
+  // Resize handler (unchanged)
   useEffect(() => {
     const handleResize = () => {
       if (!waveRef.current || !isReady) return;
-
       clearTimeout(resizeTimeoutRef.current);
       resizeTimeoutRef.current = setTimeout(() => {
         waveRef.current.drawBuffer();
@@ -111,13 +108,10 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
     };
 
     window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
+    return () => window.removeEventListener("resize", handleResize);
   }, [isReady]);
 
-  // 🔥 Cleanup (unchanged logic, safer)
+  // Cleanup
   useEffect(() => {
     return () => {
       if (waveRef.current) {
@@ -127,19 +121,15 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
     };
   }, []);
 
-  // 🔥 Toggle play 
   const togglePlay = useCallback((e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-
     if (!isReady) return;
-
     waveRef.current?.playPause();
   }, [isReady]);
 
-  // Format time
   const formatTime = (time) => {
     if (!time || isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
@@ -149,7 +139,6 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
 
   return (
     <div className={`w-full flex items-center gap-3 ${compact ? "py-2" : "py-3"}`}>
-      
       {/* Play/Pause */}
       <button
         onClick={togglePlay}
@@ -185,7 +174,6 @@ export default function WaveformPlayer({ audioUrl, compact = false, onPlayStateC
           }}
         />
 
-        {/* Loading */}
         {isInitialized && !isReady && (
           <div
             className="absolute inset-0 flex items-center justify-center bg-adinkra-bg/30 rounded"
