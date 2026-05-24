@@ -2,8 +2,13 @@ export default {
   name: 'album',
   title: 'Album / Collection',
   type: 'document',
+
   fields: [
-    { name: 'title', title: 'Title', type: 'string' },
+    { 
+      name: 'title', 
+      title: 'Title', 
+      type: 'string' 
+    },
 
     {
       name: 'slug',
@@ -12,7 +17,22 @@ export default {
       options: { source: 'title' }
     },
 
-    { name: 'coverImage', title: 'Cover Image', type: 'image' },
+    // 👤 NEW — Contributor relationship
+    {
+      name: 'contributor',
+      title: 'Contributor',
+      type: 'reference',
+      to: [{ type: 'contributor' }]
+    },
+
+    { 
+      name: 'coverImage', 
+      title: 'Cover Image', 
+      type: 'image',
+      options: {
+        hotspot: true
+      }
+    },
 
     {
       name: 'description',
@@ -21,7 +41,7 @@ export default {
       of: [{ type: 'block' }]
     },
 
-    // 🔗 Tracks
+    // 🔗 Tracks Included
     {
       name: 'tracks',
       title: 'Tracks Included',
@@ -47,7 +67,7 @@ export default {
       ]
     },
 
-    // 🎧 Preview audio
+    // 🎧 Multiple preview files
     {
       name: 'previewAudio',
       title: 'Preview Audio',
@@ -55,7 +75,12 @@ export default {
       of: [{ type: 'file' }]
     },
 
-    { name: 'freeDownload', title: 'Free Download?', type: 'boolean' },
+    {
+      name: 'freeDownload',
+      title: 'Free Download?',
+      type: 'boolean',
+      initialValue: false
+    },
 
     {
       name: 'affiliateLinks',
@@ -82,7 +107,7 @@ export default {
       }
     },
 
-    // 🎼 Genre
+    // 🎼 Genre tags
     {
       name: 'packGenre',
       title: 'Pack Genre',
@@ -101,13 +126,18 @@ export default {
       }
     },
 
-    { name: 'totalFiles', title: 'Total Files', type: 'number' },
+    {
+      name: 'totalFiles',
+      title: 'Total Files',
+      type: 'number'
+    },
 
-    // 🔥 MULTIPLE DOWNLOAD LINKS (FIXED)
+    // 🔥 Multiple download links
     {
       name: 'downloadUrls',
       title: 'Download URLs',
-      description: 'Add one or more download links (e.g. full pack, stems, bonus files)',
+      description:
+        'Add one or more download links (full pack, stems, bonus files, etc.)',
       type: 'array',
       of: [
         {
@@ -117,12 +147,36 @@ export default {
       ]
     },
 
-    { name: 'releaseDate', title: 'Release Date', type: 'datetime' },
+    {
+      name: 'releaseDate',
+      title: 'Release Date',
+      type: 'datetime'
+    },
 
     {
       name: 'price',
       title: 'Price (Dollar)',
       type: 'number'
     }
-  ]
+  ],
+
+  preview: {
+    select: {
+      title: 'title',
+      contributor: 'contributor.name',
+      media: 'coverImage'
+    },
+
+    prepare(selection: { title?: string; contributor?: string; media?: any }) {
+      const { title, contributor, media } = selection;
+
+      return {
+        title,
+        subtitle: contributor
+          ? `by ${contributor}`
+          : 'No contributor assigned',
+        media
+      };
+    }
+  }
 }

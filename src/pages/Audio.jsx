@@ -31,6 +31,16 @@ const query = groq`
   _type,
   title,
   slug,
+  contributor->{
+    name,
+    slug,
+    verified,
+    bio,
+    location,
+    profileImage {
+      asset-> { url }
+    }
+  },
   category,
   trackTitle,
   genre,
@@ -138,24 +148,23 @@ function StandaloneAudioPlayer({ audioUrl }) {
       audio.pause();
       setIsPlaying(false);
     } else {
-      // Pause all other audio elements first
-      document.querySelectorAll('audio').forEach(a => {
+      document.querySelectorAll("audio").forEach((a) => {
         if (a !== audio) {
           a.pause();
           a.currentTime = 0;
         }
       });
-      
+
       audio.play().then(() => {
         setIsPlaying(true);
-      }).catch(e => console.log("Play failed:", e));
+      }).catch((e) => console.log("Play failed:", e));
     }
   };
 
   const seek = (e) => {
     const audio = audioRef.current;
     if (!audio || !duration) return;
-    
+
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
     audio.currentTime = percent * duration;
@@ -164,15 +173,15 @@ function StandaloneAudioPlayer({ audioUrl }) {
   return (
     <div className="w-full flex items-center gap-3 bg-zinc-950/50 p-3 rounded-lg">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
-      
+
       <button
         onClick={togglePlay}
         disabled={!isLoaded}
         className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-          isPlaying 
-            ? "bg-adinkra-highlight text-adinkra-bg" 
+          isPlaying
+            ? "bg-adinkra-highlight text-adinkra-bg"
             : "bg-adinkra-gold/20 text-adinkra-gold hover:bg-adinkra-highlight hover:text-adinkra-bg"
-        } ${!isLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+        } ${!isLoaded ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         {isPlaying ? (
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -187,11 +196,11 @@ function StandaloneAudioPlayer({ audioUrl }) {
       </button>
 
       <div className="flex-1 flex items-center gap-2">
-        <div 
+        <div
           className="flex-1 h-1.5 bg-white/10 rounded-full cursor-pointer relative overflow-hidden"
           onClick={seek}
         >
-          <div 
+          <div
             className="absolute top-0 left-0 h-full bg-adinkra-highlight rounded-full transition-all"
             style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
           />
@@ -205,32 +214,32 @@ function StandaloneAudioPlayer({ audioUrl }) {
 }
 
 // Track Row Component with Inline Player
-function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, onAddToCart }) {
+function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, onAddToCart, navigate }) {
   const f = item;
   const slug = f.slug?.current || item._id;
   const isLiked = likes[slug] > 0;
-  
+
   const title = f.trackTitle || f.title || "Untitled";
-  const artist = f.album?.title || "Adinkra Audio";
+  const artistName = f.contributor?.name || f.album?.title || "Adinkra Audio";
   const cover = f.coverImage?.asset?.url || "/placeholder.jpg";
   const price = f.freeDownload ? "Free" : `$${Number(f.price || 0).toFixed(2)}`;
   const previewUrl = f.previewAudio?.asset?.url || null;
-  
+
   const tags = [
     ...(Array.isArray(f.genre) ? f.genre : [f.genre]).filter(Boolean),
-    ...(Array.isArray(f.mood) ? f.mood : [f.mood]).filter(Boolean)
+    ...(Array.isArray(f.mood) ? f.mood : [f.mood]).filter(Boolean),
   ].slice(0, 2);
 
   return (
     <div className="group">
-      <div 
+      <div
         className={`flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 ${
-          isPlaying ? 'bg-white/10 border-white/10' : ''
+          isPlaying ? "bg-white/10 border-white/10" : ""
         }`}
       >
         <div className="w-8 flex justify-center flex-shrink-0">
           <span className="text-sm text-adinkra-gold/40 group-hover:hidden font-mono">{index + 1}</span>
-          <button 
+          <button
             onClick={onPlay}
             className="hidden group-hover:block text-adinkra-gold hover:text-adinkra-highlight transition-colors"
           >
@@ -252,11 +261,20 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className={`font-medium text-sm md:text-base leading-tight ${isPlaying ? 'text-adinkra-highlight' : 'text-white'} break-words`}>
+          <div className={`font-medium text-sm md:text-base leading-tight ${isPlaying ? "text-adinkra-highlight" : "text-white"} break-words`}>
             {title}
           </div>
           <div className="text-xs text-adinkra-gold/50 mt-1 flex flex-wrap items-center gap-1">
-            <span className="truncate">{artist}</span>
+            <div
+              onClick={() =>
+                navigate(
+                  `/contributor/${f.contributor?.slug?.current}`
+                )
+              }
+              className="truncate cursor-pointer hover:text-adinkra-highlight transition-colors"
+            >
+              {artistName}
+            </div>
             {tags.length > 0 && (
               <>
                 <span className="mx-1">•</span>
@@ -278,7 +296,7 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           onClick={() => onLike(slug)}
           disabled={loadingLike}
           className={`p-2 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block ${
-            isLiked ? 'text-red-500 opacity-100' : 'text-adinkra-gold/40 hover:text-white'
+            isLiked ? "text-red-500 opacity-100" : "text-adinkra-gold/40 hover:text-white"
           }`}
         >
           <svg className="w-4 h-4" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
@@ -293,9 +311,9 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
         <button
           onClick={() => onAddToCart(item)}
           className={`p-2 rounded-lg transition-colors ${
-            f.freeDownload 
-              ? 'text-green-400 hover:bg-green-400/10' 
-              : 'text-adinkra-highlight hover:bg-adinkra-highlight/10'
+            f.freeDownload
+              ? "text-green-400 hover:bg-green-400/10"
+              : "text-adinkra-highlight hover:bg-adinkra-highlight/10"
           }`}
         >
           {f.freeDownload ? (
@@ -309,7 +327,7 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           )}
         </button>
       </div>
-      
+
       {/* Inline Player for Single Track */}
       {isPlaying && previewUrl && (
         <div className="px-3 pb-3">
@@ -331,16 +349,16 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
   const title = f.title || "Untitled";
   const price = f.freeDownload ? "Free" : `$${Number(f.price || 0).toFixed(2)}`;
   const isLiked = likes[slug] > 0;
-  
+
   const trackCount = f.totalFiles || (Array.isArray(f.tracks) ? f.tracks.length : 0);
   const genre = Array.isArray(f.packGenre) ? f.packGenre[0] : f.packGenre;
-  
+
   const formatArray = (arr) => {
     if (!arr) return [];
     if (Array.isArray(arr)) return arr;
     return [arr];
   };
-  
+
   const packGenres = formatArray(f.packGenre);
   const previewUrls = formatArray(f.previewAudioArray);
   const downloadUrls = formatArray(f.downloadUrls);
@@ -348,17 +366,17 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
   return (
     <div className="bg-zinc-900/50 rounded-2xl border border-white/5 overflow-hidden">
       {/* Header */}
-      <div 
+      <div
         className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900 ring-1 ring-white/10 relative">
           <img src={cover} alt={title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center md:hidden">
-            <svg 
-              className={`w-6 h-6 text-white transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className={`w-6 h-6 text-white transition-transform ${isOpen ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -371,7 +389,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
             {title}
           </h3>
           <p className="text-sm text-adinkra-gold/50 mt-1">
-            {genre || "Sample Pack"} • {trackCount} {trackCount === 1 ? 'track' : 'tracks'}
+            {genre || "Sample Pack"} • {trackCount} {trackCount === 1 ? "track" : "tracks"}
           </p>
           <div className="flex items-center gap-2 mt-2 md:hidden">
             <span className="text-adinkra-highlight font-bold">{price}</span>
@@ -385,7 +403,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
             onClick={(e) => { e.stopPropagation(); onLike(slug); }}
             disabled={loadingLike[slug]}
             className={`p-2 rounded-lg transition-colors ${
-              isLiked ? 'text-red-500' : 'text-adinkra-gold/40 hover:text-white hover:bg-white/5'
+              isLiked ? "text-red-500" : "text-adinkra-gold/40 hover:text-white hover:bg-white/5"
             }`}
           >
             <svg className="w-5 h-5" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
@@ -398,10 +416,10 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
           >
             {f.freeDownload ? "Download" : "Add to Cart"}
           </button>
-          <svg 
-            className={`w-5 h-5 text-adinkra-gold/60 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className={`w-5 h-5 text-adinkra-gold/60 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -451,7 +469,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                 <div>
                   <span className="text-adinkra-gold/40 block text-xs uppercase tracking-wider mb-1">Release Date</span>
                   <span className="text-white">
-                    {f.releaseDate ? new Date(f.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "—"}
+                    {f.releaseDate ? new Date(f.releaseDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—"}
                   </span>
                 </div>
                 <div>
@@ -485,7 +503,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
-                        <span className="truncate">{url.split('/').pop() || `File ${idx + 1}`}</span>
+                        <span className="truncate">{url.split("/").pop() || `File ${idx + 1}`}</span>
                       </div>
                     ))}
                   </div>
@@ -498,15 +516,15 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                   onClick={() => onLike(slug)}
                   disabled={loadingLike[slug]}
                   className={`flex-1 py-3 rounded-lg border transition-colors flex items-center justify-center gap-2 ${
-                    isLiked 
-                      ? 'border-red-500 text-red-500' 
-                      : 'border-white/10 text-adinkra-gold hover:bg-white/5'
+                    isLiked
+                      ? "border-red-500 text-red-500"
+                      : "border-white/10 text-adinkra-gold hover:bg-white/5"
                   }`}
                 >
                   <svg className="w-5 h-5" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  {isLiked ? 'Liked' : 'Like'}
+                  {isLiked ? "Liked" : "Like"}
                 </button>
                 <button
                   onClick={() => onAddToCart(item)}
@@ -606,8 +624,7 @@ function AudioContent() {
     if (currentlyPlaying === id) {
       setCurrentlyPlaying(null);
     } else {
-      // Stop all other audio first
-      document.querySelectorAll('audio').forEach(a => {
+      document.querySelectorAll("audio").forEach((a) => {
         a.pause();
         a.currentTime = 0;
       });
@@ -696,7 +713,7 @@ function AudioContent() {
                 className="w-full bg-zinc-900/80 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder:text-adinkra-gold/40 focus:outline-none focus:border-adinkra-highlight/50 focus:bg-zinc-900 transition-all"
               />
               {searchQuery && (
-                <button 
+                <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-adinkra-gold/40 hover:text-white"
                 >
@@ -757,6 +774,7 @@ function AudioContent() {
                     onLike={handleLike}
                     loadingLike={loadingLikes[item.slug?.current || item._id]}
                     onAddToCart={handleAddOrDownload}
+                    navigate={navigate}
                   />
                 ))}
               </div>
@@ -793,8 +811,8 @@ function AudioContent() {
             </svg>
             <p>No tracks found</p>
             {searchQuery && (
-              <button 
-                onClick={() => {setSearchQuery(""); setSelectedCategory("All");}}
+              <button
+                onClick={() => { setSearchQuery(""); setSelectedCategory("All"); }}
                 className="mt-2 text-adinkra-highlight hover:underline"
               >
                 Clear filters
@@ -822,7 +840,7 @@ function AudioContent() {
         className="fixed bottom-6 right-6 bg-adinkra-highlight hover:bg-yellow-400 text-adinkra-bg p-4 rounded-full shadow-2xl font-semibold flex items-center gap-2 transition-all z-50"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
         {cartItems.length > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">

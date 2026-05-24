@@ -2,15 +2,31 @@ export default {
   name: 'audioTrack',
   title: 'Audio Track',
   type: 'document',
+
   fields: [
     // Core
-    { name: 'title', title: 'Track Title', type: 'string' },
+    {
+      name: 'title',
+      title: 'Track Title',
+      type: 'string'
+    },
 
     {
       name: 'slug',
       title: 'Slug',
       type: 'slug',
-      options: { source: 'title', maxLength: 96 }
+      options: {
+        source: 'title',
+        maxLength: 96
+      }
+    },
+
+    // 👤 NEW — Contributor
+    {
+      name: 'contributor',
+      title: 'Contributor',
+      type: 'reference',
+      to: [{ type: 'contributor' }]
     },
 
     // Media
@@ -18,16 +34,39 @@ export default {
       name: 'coverImage',
       title: 'Cover Image',
       type: 'image',
-      options: { hotspot: true }
+      options: {
+        hotspot: true
+      }
     },
-    { name: 'previewAudio', title: 'Preview Audio', type: 'file' },
-    { name: 'fullDownload', title: 'Full Download File', type: 'file' },
+
+    {
+      name: 'previewAudio',
+      title: 'Preview Audio',
+      type: 'file'
+    },
+
+    {
+      name: 'fullDownload',
+      title: 'Full Download File',
+      type: 'file'
+    },
 
     // Pricing & Access
-    { name: 'price', title: 'Price (Dollar)', type: 'number' },
-    { name: 'freeDownload', title: 'Free Download?', type: 'boolean' },
+    {
+      name: 'price',
+      title: 'Price (Dollar)',
+      type: 'number',
+      initialValue: 0
+    },
 
-    // 🔗 RELATION: Album (NEW)
+    {
+      name: 'freeDownload',
+      title: 'Free Download?',
+      type: 'boolean',
+      initialValue: false
+    },
+
+    // 🔗 Album relation
     {
       name: 'album',
       title: 'Album / Collection',
@@ -35,7 +74,7 @@ export default {
       to: [{ type: 'album' }]
     },
 
-    // 🔗 RELATION: Video Demos (NEW)
+    // 🎥 Video demos
     {
       name: 'videoDemos',
       title: 'Video Demos',
@@ -182,7 +221,8 @@ export default {
     {
       name: 'loopable',
       title: 'Loopable',
-      type: 'boolean'
+      type: 'boolean',
+      initialValue: false
     },
 
     {
@@ -221,12 +261,25 @@ export default {
     },
 
     // Metadata
-    { name: 'featured', title: 'Featured', type: 'boolean' },
+    {
+      name: 'featured',
+      title: 'Featured',
+      type: 'boolean',
+      initialValue: false
+    },
 
     {
       name: 'releaseDate',
       title: 'Release Date',
       type: 'datetime'
     }
-  ]
+  ],
+
+  preview: {
+    select: {
+      title: 'title',
+      subtitle: 'contributor.name',
+      media: 'coverImage'
+    }
+  }
 }

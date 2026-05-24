@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useState } from "react";
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
@@ -16,19 +16,25 @@ import BackgroundAudioPlayer from "./components/BackgroundAudioPlayer";
 // Pages
 import Home from "./pages/Home";
 import Audio from "./pages/Audio";
-import Downloads from "./pages/Downloads"; // <--- Added Downloads
+import Downloads from "./pages/Downloads";
+
 import HouseOfAusar from "./pages/HouseOfAusar";
 import HouseArticle from "./pages/HouseArticle";
+
 import News from "./pages/News";
 import NewsArticle from "./pages/NewsArticle";
 
-// ✅ FIXED IMPORT NAME
 import AdinkraGallery from "./pages/AdinkraGallery";
 
 import TVVideoPage from "./pages/TVVideoPage";
 import PremiumTV from "./pages/PremiumTV";
 import PremiumVideo from "./pages/PremiumVideo";
+
 import Contact from "./pages/Contact";
+
+// Contributor
+import ContributorPage from "./pages/ContributorPage";
+import ContributorDashboard from "./pages/ContributorDashboard";
 
 // Games
 import Games from "./Games/Games";
@@ -47,55 +53,72 @@ export default function App() {
     >
       <AudioPlayerProvider>
         <div className="min-h-screen flex flex-col bg-adinkra-bg text-adinkra-gold relative">
+
           <AnalyticsTracker />
 
-          {/* Global Navbar */}
           <Header />
 
-          {/* Persistent Audio Player */}
           <BackgroundAudioPlayer />
 
-          {/* Page Content */}
-          <div className="flex-1 relative pt-20">
+          <main className="flex-1 relative pt-20">
             <Routes>
+
+              {/* HOME */}
               <Route path="/" element={<Home />} />
 
-              {/* Audio Pages */}
+              {/* AUDIO */}
               <Route path="/audio" element={<Audio />} />
               <Route path="/downloads" element={<Downloads />} />
 
-              {/* House of Ausar (can remove later if you fully replace it) */}
+              {/* CONTRIBUTORS */}
+              <Route path="/contributor/:slug" element={<ContributorPage />} />
+
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedContent>
+                    <ContributorDashboard />
+                  </ProtectedContent>
+                }
+              />
+
+              {/* HOUSE OF AUSAR */}
               <Route path="/house-of-ausar" element={<HouseOfAusar />} />
               <Route path="/house-article/:id" element={<HouseArticle />} />
               <Route path="/house/:id" element={<HouseArticle />} />
 
-              {/* News */}
+              {/* NEWS */}
               <Route path="/news" element={<News />} />
               <Route path="/news-article/:slug" element={<NewsArticle />} />
 
-              {/* ✅ GALLERY (correct now) */}
+              {/* GALLERY */}
               <Route path="/gallery" element={<AdinkraGallery />} />
-              <Route path="/tv-video/:id" element={<TVVideoPage />} />
 
-              {/* Premium */}
+              {/* TV */}
+              <Route path="/tv-video/:id" element={<TVVideoPage />} />
               <Route path="/premium-tv" element={<PremiumTV />} />
               <Route path="/premium-tv/:id" element={<PremiumVideo />} />
 
-              {/* Games */}
+              {/* GAMES */}
               <Route path="/games" element={<Games />} />
               <Route path="/games/morabaraba" element={<MorabarabaGame />} />
 
-              {/* Contact */}
+              {/* CONTACT */}
               <Route path="/contact" element={<Contact />} />
 
-              {/* Protected */}
+              {/* PROTECTED TEST AREA */}
               <Route
                 path="/features"
                 element={
                   <ProtectedContent>
-                    <h1 className="text-center mt-20 text-2xl">
-                      Features Page
-                    </h1>
+                    <div className="py-20 text-center">
+                      <h1 className="text-3xl font-bold text-adinkra-highlight">
+                        Features
+                      </h1>
+                      <p className="mt-4 text-adinkra-gold/70">
+                        Protected content area
+                      </p>
+                    </div>
                   </ProtectedContent>
                 }
               />
@@ -104,16 +127,22 @@ export default function App() {
               <Route
                 path="*"
                 element={
-                  <h1 className="text-center mt-20 text-adinkra-highlight text-2xl">
-                    404 — Page Not Found
-                  </h1>
+                  <div className="py-32 text-center">
+                    <h1 className="text-4xl font-bold text-adinkra-highlight">
+                      404
+                    </h1>
+                    <p className="mt-3 text-adinkra-gold/60">
+                      The page you're looking for doesn't exist.
+                    </p>
+                  </div>
                 }
               />
-            </Routes>
-          </div>
 
-          {/* Footer */}
+            </Routes>
+          </main>
+
           <Footer />
+
         </div>
       </AudioPlayerProvider>
     </PayPalScriptProvider>
