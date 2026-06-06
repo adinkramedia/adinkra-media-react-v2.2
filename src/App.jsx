@@ -30,18 +30,25 @@ import TVVideoPage from "./pages/TVVideoPage";
 import PremiumTV from "./pages/PremiumTV";
 import PremiumVideo from "./pages/PremiumVideo";
 
+import UploadTrack from "./pages/UploadTrack";
+import CreateAlbum from "./pages/CreateAlbum";
+
 import Contact from "./pages/Contact";
 
 // Contributor
 import ContributorPage from "./pages/ContributorPage";
 import ContributorDashboard from "./pages/ContributorDashboard";
 
+// Admin
+import AdminModeration from "./pages/AdminModeration";
+
 // Games
 import Games from "./Games/Games";
 import MorabarabaGame from "./Games/MorabarabaGame";
 
 export default function App() {
-  const [audioCartOpen, setAudioCartOpen] = useState(false);
+
+  const [audioCartOpen] = useState(false);
 
   return (
     <PayPalScriptProvider
@@ -52,6 +59,7 @@ export default function App() {
       }}
     >
       <AudioPlayerProvider>
+
         <div className="min-h-screen flex flex-col bg-adinkra-bg text-adinkra-gold relative">
 
           <AnalyticsTracker />
@@ -61,90 +69,205 @@ export default function App() {
           <BackgroundAudioPlayer />
 
           <main className="flex-1 relative pt-20">
+
             <Routes>
 
               {/* HOME */}
-              <Route path="/" element={<Home />} />
+
+              <Route
+                path="/"
+                element={<Home />}
+              />
 
               {/* AUDIO */}
-              <Route path="/audio" element={<Audio />} />
-              <Route path="/downloads" element={<Downloads />} />
+
+              <Route
+                path="/audio"
+                element={<Audio />}
+              />
+
+              <Route
+                path="/downloads"
+                element={<Downloads />}
+              />
 
               {/* CONTRIBUTORS */}
-              <Route path="/contributor/:slug" element={<ContributorPage />} />
+
+              <Route
+                path="/contributor/:slug"
+                element={<ContributorPage />}
+              />
 
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedContent>
-                    <ContributorDashboard />
+                    <ContributorDashboard/>
+                  </ProtectedContent>
+                }
+              />
+
+              <Route
+                path="/dashboard/upload-track"
+                element={
+                  <ProtectedContent>
+                    <UploadTrack/>
+                  </ProtectedContent>
+                }
+              />
+
+              <Route
+                path="/dashboard/create-album"
+                element={
+                  <ProtectedContent>
+                    <CreateAlbum/>
+                  </ProtectedContent>
+                }
+              />
+
+              {/* ADMIN MODERATION */}
+
+              <Route
+                path="/admin/moderation"
+                element={
+                  <ProtectedContent>
+                    <AdminModeration/>
                   </ProtectedContent>
                 }
               />
 
               {/* HOUSE OF AUSAR */}
-              <Route path="/house-of-ausar" element={<HouseOfAusar />} />
-              <Route path="/house-article/:id" element={<HouseArticle />} />
-              <Route path="/house/:id" element={<HouseArticle />} />
+
+              <Route
+                path="/house-of-ausar"
+                element={<HouseOfAusar />}
+              />
+
+              <Route
+                path="/house-article/:id"
+                element={<HouseArticle />}
+              />
+
+              <Route
+                path="/house/:id"
+                element={<HouseArticle />}
+              />
 
               {/* NEWS */}
-              <Route path="/news" element={<News />} />
-              <Route path="/news-article/:slug" element={<NewsArticle />} />
+
+              <Route
+                path="/news"
+                element={<News />}
+              />
+
+              <Route
+                path="/news-article/:slug"
+                element={<NewsArticle />}
+              />
 
               {/* GALLERY */}
-              <Route path="/gallery" element={<AdinkraGallery />} />
+
+              <Route
+                path="/gallery"
+                element={<AdinkraGallery />}
+              />
 
               {/* TV */}
-              <Route path="/tv-video/:id" element={<TVVideoPage />} />
-              <Route path="/premium-tv" element={<PremiumTV />} />
-              <Route path="/premium-tv/:id" element={<PremiumVideo />} />
+
+              <Route
+                path="/tv-video/:id"
+                element={<TVVideoPage />}
+              />
+
+              <Route
+                path="/premium-tv"
+                element={<PremiumTV />}
+              />
+
+              <Route
+                path="/premium-tv/:id"
+                element={<PremiumVideo />}
+              />
 
               {/* GAMES */}
-              <Route path="/games" element={<Games />} />
-              <Route path="/games/morabaraba" element={<MorabarabaGame />} />
+
+              <Route
+                path="/games"
+                element={<Games />}
+              />
+
+              <Route
+                path="/games/morabaraba"
+                element={<MorabarabaGame />}
+              />
 
               {/* CONTACT */}
-              <Route path="/contact" element={<Contact />} />
 
-              {/* PROTECTED TEST AREA */}
+              <Route
+                path="/contact"
+                element={<Contact />}
+              />
+
+              {/* PROTECTED TEST */}
+
               <Route
                 path="/features"
                 element={
                   <ProtectedContent>
+
                     <div className="py-20 text-center">
+
                       <h1 className="text-3xl font-bold text-adinkra-highlight">
+
                         Features
+
                       </h1>
+
                       <p className="mt-4 text-adinkra-gold/70">
+
                         Protected content area
+
                       </p>
+
                     </div>
+
                   </ProtectedContent>
                 }
               />
 
               {/* 404 */}
+
               <Route
                 path="*"
                 element={
                   <div className="py-32 text-center">
+
                     <h1 className="text-4xl font-bold text-adinkra-highlight">
+
                       404
+
                     </h1>
+
                     <p className="mt-3 text-adinkra-gold/60">
+
                       The page you're looking for doesn't exist.
+
                     </p>
+
                   </div>
                 }
               />
 
             </Routes>
+
           </main>
 
           <Footer />
 
         </div>
+
       </AudioPlayerProvider>
+
     </PayPalScriptProvider>
   );
 }

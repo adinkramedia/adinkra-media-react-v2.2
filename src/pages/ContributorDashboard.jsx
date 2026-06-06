@@ -1,7 +1,20 @@
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import { useNavigate } from "react-router-dom";
+
+import {
+  Music,
+  Disc3,
+  Eye,
+  Upload,
+  User,
+  DollarSign,
+  Clock,
+  PlusCircle
+} from "lucide-react";
 
 import { sanity } from "../lib/sanity";
+import { supabase } from "../lib/supabase";
 import groq from "groq";
 
 import Header from "../components/Header";
@@ -11,8 +24,10 @@ const query = groq`
   _type=="contributor" &&
   email==$email
 ][0]{
+
   _id,
   name,
+  slug,
   email,
   verified,
   bio,
@@ -25,11 +40,13 @@ const query = groq`
   "tracks": *[
     _type=="audioTrack" &&
     contributor._ref==^._id
-  ]{
+  ] | order(releaseDate desc){
+
     _id,
     title,
     price,
     freeDownload,
+    releaseDate,
 
     coverImage{
       asset->{url}
@@ -39,299 +56,501 @@ const query = groq`
   "albums": *[
     _type=="album" &&
     contributor._ref==^._id
-  ]{
+  ] | order(releaseDate desc){
+
     _id,
     title,
     price,
     freeDownload,
+    releaseDate,
 
     coverImage{
       asset->{url}
     }
   }
+
 }
 `;
 
 export default function ContributorDashboard() {
 
-  const { user, isAuthenticated, isLoading } =
-    useAuth0();
+const navigate=useNavigate();
+
+const {
+user,
+isAuthenticated,
+isLoading
+}=useAuth0();
 
-  const [contributor, setContributor] =
-    useState(null);
+const [
+contributor,
+setContributor
+]=useState(null);
 
-  const [loading, setLoading] =
-    useState(true);
+const [
+loading,
+setLoading
+]=useState(true);
 
-  useEffect(() => {
+const [
+pendingCount,
+setPendingCount
+]=useState(0);
 
-    async function load() {
+useEffect(()=>{
 
-      if (
-        isLoading ||
-        !isAuthenticated ||
-        !user?.email
-      ) {
-        setLoading(false);
-        return;
-      }
+async function load(){
 
-      try {
+if(
+isLoading ||
+!isAuthenticated ||
+!user?.email
+){
+setLoading(false);
+return;
+}
 
-        const data =
-          await sanity.fetch(
-            query,
-            {
-              email: user.email
-            }
-          );
+try{
 
-        setContributor(data);
+const data=
+await sanity.fetch(
+query,
+{
+email:user.email
+}
+);
 
-      } catch(error){
+setContributor(data);
 
-        console.error(
-          "Dashboard load error:",
-          error
-        );
+const [
+trackPending,
+albumPending
+]=await Promise.all([
 
-      }
+supabase
+.from("track_submissions")
+.select("*",{count:"exact",head:true})
+.eq("user_email",user.email)
+.eq("status","pending"),
 
-      setLoading(false);
+supabase
+.from("album_submissions")
+.select("*",{count:"exact",head:true})
+.eq("user_email",user.email)
+.eq("status","pending")
 
-    }
+]);
 
-    load();
+setPendingCount(
+(trackPending.count || 0)
++
+(albumPending.count || 0)
+);
 
-  },[
-    user,
-    isAuthenticated,
-    isLoading
-  ]);
+}catch(error){
 
-  if(
-    loading ||
-    isLoading
-  ){
+console.error(
+"Dashboard error:",
+error
+);
 
-    return(
-      <div className="min-h-screen bg-adinkra-bg text-white">
+}
 
-        <Header/>
+setLoading(false);
 
-        <div className="text-center py-20">
+}
 
-          Loading dashboard...
+load();
 
-        </div>
+},[
+user,
+isAuthenticated,
+isLoading
+]);
 
-      </div>
-    );
+if(
+loading ||
+isLoading
+){
 
-  }
+return(
 
-  if(
-    !isAuthenticated
-  ){
+<div className="min-h-screen bg-adinkra-bg text-white">
 
-    return(
+<Header/>
 
-      <div className="min-h-screen bg-adinkra-bg text-white">
+<div className="text-center py-20">
 
-        <Header/>
+Loading dashboard...
 
-        <div className="text-center py-20">
+</div>
 
-          Please log in first
+</div>
 
-        </div>
+);
 
-      </div>
+}
 
-    );
+if(!isAuthenticated){
 
-  }
+return(
 
-  if(
-    !contributor
-  ){
+<div className="min-h-screen bg-adinkra-bg text-white">
 
-    return(
+<Header/>
 
-      <div className="min-h-screen bg-adinkra-bg text-white">
+<div className="text-center py-20">
 
-        <Header/>
+Please log in first
 
-        <div className="text-center py-20">
+</div>
 
-          <h2 className="text-2xl font-bold">
+</div>
 
-            No contributor profile linked
+);
 
-          </h2>
+}
 
-          <p className="text-adinkra-gold/60 mt-3">
+if(!contributor){
 
-            Logged in as:
+return(
 
-          </p>
+<div className="min-h-screen bg-adinkra-bg text-white">
 
-          <p className="text-adinkra-highlight">
+<Header/>
 
-            {user?.email}
+<div className="text-center py-20">
 
-          </p>
+<h2 className="text-2xl font-bold">
 
-        </div>
+No contributor profile linked
 
-      </div>
+</h2>
 
-    );
+<p className="mt-4 text-adinkra-gold/60">
 
-  }
+Logged in as:
 
-  return(
+</p>
 
-    <div className="min-h-screen bg-adinkra-bg text-white">
+<p className="text-adinkra-highlight">
 
-      <Header/>
+{user?.email}
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
+</p>
 
-        <h1 className="text-3xl font-bold">
+</div>
 
-          Welcome,
-          {" "}
-          {contributor.name}
+</div>
 
-        </h1>
+);
 
-        {contributor.verified && (
+}
 
-          <p className="text-blue-400 mt-1">
+const totalTracks=
+contributor.tracks?.length || 0;
 
-            ✓ Verified Contributor
+const totalAlbums=
+contributor.albums?.length || 0;
 
-          </p>
+const freeTracks=
+contributor.tracks?.filter(
+x=>x.freeDownload
+).length || 0;
 
-        )}
+const paidTracks=
+contributor.tracks?.filter(
+x=>!x.freeDownload
+).length || 0;
 
-        <p className="text-adinkra-gold/60 mt-2">
+const recent=[
+...(contributor.tracks||[]),
+...(contributor.albums||[])
+]
+.slice(0,6);
 
-          {contributor.location}
+return(
 
-        </p>
+<div className="min-h-screen bg-adinkra-bg text-white">
 
-      </div>
+<Header/>
 
-      {/* Tracks */}
+<div className="max-w-7xl mx-auto px-6 py-10">
 
-      <div className="max-w-6xl mx-auto px-6">
+{/* PROFILE */}
 
-        <h2 className="text-xl font-bold mb-4">
+<div className="bg-zinc-900 rounded-2xl p-6 mb-10">
 
-          Your Tracks
+<div className="flex flex-col md:flex-row gap-6 items-center">
 
-        </h2>
+<img
+src={
+contributor.profileImage?.asset?.url ||
+"/placeholder.jpg"
+}
+className="w-28 h-28 rounded-full border-4 border-adinkra-highlight object-cover"
+/>
 
-        <div className="grid md:grid-cols-4 gap-4">
+<div className="flex-1">
 
-          {contributor.tracks?.map(track=>(
+<h1 className="text-3xl font-bold">
 
-            <div
-              key={track._id}
-              className="bg-zinc-900 rounded-xl overflow-hidden"
-            >
+Welcome, {contributor.name}
 
-              <img
-                src={
-                  track.coverImage?.asset?.url ||
-                  "/placeholder.jpg"
-                }
-                className="w-full aspect-square object-cover"
-              />
+</h1>
 
-              <div className="p-3">
+{contributor.verified && (
 
-                <h3>
+<p className="text-blue-400 mt-2">
 
-                  {track.title}
+✓ Verified Contributor
 
-                </h3>
+</p>
 
-                <p className="text-adinkra-highlight">
+)}
 
-                  {track.freeDownload
-                    ? "Free"
-                    : `$${track.price}`}
+<p className="text-adinkra-gold/60 mt-2">
 
-                </p>
+{contributor.location}
 
-              </div>
+</p>
 
-            </div>
+<p className="mt-4 text-adinkra-gold/80">
 
-          ))}
+{contributor.bio}
 
-        </div>
+</p>
 
-      </div>
+</div>
 
-      {/* Albums */}
+</div>
 
-      <div className="max-w-6xl mx-auto px-6 mt-10 pb-20">
+</div>
 
-        <h2 className="text-xl font-bold mb-4">
+{/* STATS */}
 
-          Your Albums
+<div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10">
 
-        </h2>
+<div className="bg-zinc-900 p-5 rounded-xl">
 
-        <div className="grid md:grid-cols-4 gap-4">
+<Music className="mb-3"/>
 
-          {contributor.albums?.map(album=>(
+<h2 className="text-3xl font-bold">
 
-            <div
-              key={album._id}
-              className="bg-zinc-900 rounded-xl overflow-hidden"
-            >
+{totalTracks}
 
-              <img
-                src={
-                  album.coverImage?.asset?.url ||
-                  "/placeholder.jpg"
-                }
-                className="w-full aspect-square object-cover"
-              />
+</h2>
 
-              <div className="p-3">
+<p className="text-adinkra-gold/60">
 
-                <h3>
+Tracks
 
-                  {album.title}
+</p>
 
-                </h3>
+</div>
 
-                <p className="text-adinkra-highlight">
+<div className="bg-zinc-900 p-5 rounded-xl">
 
-                  {album.freeDownload
-                    ? "Free"
-                    : `$${album.price}`}
+<Disc3 className="mb-3"/>
 
-                </p>
+<h2 className="text-3xl font-bold">
 
-              </div>
+{totalAlbums}
 
-            </div>
+</h2>
 
-          ))}
+<p className="text-adinkra-gold/60">
 
-        </div>
+Albums
 
-      </div>
+</p>
 
-    </div>
+</div>
 
-  );
+<div className="bg-zinc-900 p-5 rounded-xl">
+
+<DollarSign className="mb-3"/>
+
+<h2 className="text-3xl font-bold">
+
+{paidTracks}
+
+</h2>
+
+<p className="text-adinkra-gold/60">
+
+Paid
+
+</p>
+
+</div>
+
+<div className="bg-zinc-900 p-5 rounded-xl">
+
+<Upload className="mb-3"/>
+
+<h2 className="text-3xl font-bold">
+
+{freeTracks}
+
+</h2>
+
+<p className="text-adinkra-gold/60">
+
+Free
+
+</p>
+
+</div>
+
+<div className="bg-zinc-900 p-5 rounded-xl">
+
+<Clock className="mb-3"/>
+
+<h2 className="text-3xl font-bold">
+
+{pendingCount}
+
+</h2>
+
+<p className="text-adinkra-gold/60">
+
+Pending
+
+</p>
+
+</div>
+
+</div>
+
+{/* ACTIONS */}
+
+<div className="mb-10">
+
+<h2 className="text-xl font-bold mb-5">
+
+Quick Actions
+
+</h2>
+
+<div className="flex flex-wrap gap-4">
+
+<button
+onClick={()=>
+navigate(
+"/dashboard/upload-track"
+)
+}
+className="px-6 py-3 rounded-xl bg-adinkra-highlight text-black font-bold flex gap-2 items-center"
+>
+
+<Upload size={18}/>
+
+Upload Track
+
+</button>
+
+<button
+onClick={()=>
+navigate(
+"/dashboard/create-album"
+)
+}
+className="px-6 py-3 rounded-xl bg-zinc-900 flex gap-2 items-center"
+>
+
+<PlusCircle size={18}/>
+
+Create Album
+
+</button>
+
+<button
+onClick={()=>
+navigate(
+`/contributor/${contributor.slug?.current}`
+)
+}
+className="px-6 py-3 rounded-xl bg-zinc-900 flex gap-2 items-center"
+>
+
+<Eye size={18}/>
+
+Public Page
+
+</button>
+
+<button
+className="px-6 py-3 rounded-xl bg-zinc-900 flex gap-2 items-center"
+>
+
+<User size={18}/>
+
+Edit Profile
+
+</button>
+
+</div>
+
+</div>
+
+{/* RECENT */}
+
+<div className="mb-10">
+
+<h2 className="text-2xl font-bold mb-5">
+
+Recent Uploads
+
+</h2>
+
+<div className="grid md:grid-cols-3 gap-4">
+
+{recent.length===0 ? (
+
+<div className="text-adinkra-gold/60">
+
+No uploads yet
+
+</div>
+
+):(
+
+recent.map(item=>(
+
+<div
+key={item._id}
+className="bg-zinc-900 rounded-xl p-5"
+>
+
+<h3 className="font-bold">
+
+{item.title}
+
+</h3>
+
+<p className="text-adinkra-highlight">
+
+{item.freeDownload
+? "Free"
+: `$${item.price}`}
+
+</p>
+
+</div>
+
+))
+
+)}
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+);
 
 }
