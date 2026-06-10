@@ -99,6 +99,7 @@ export default {
           { title: 'Meditation', value: 'meditation' },
           { title: 'World and Traditional', value: 'world-traditional' },
           { title: 'Sound Effects', value: 'sound-effects' },
+          { title: 'Sound Design', value: 'sound-design' },
           { title: 'Ambient', value: 'ambient' }
         ]
       }
@@ -106,18 +107,40 @@ export default {
 
     {
       name: 'genre',
-      title: 'Genre',
-      type: 'array',
-      of: [{ type: 'string' }],
-      options: {
-        list: [
-          { title: 'Cinematic', value: 'cinematic' },
-          { title: 'Ambient', value: 'ambient' },
-          { title: 'Traditional', value: 'traditional' },
-          { title: 'Electronic', value: 'electronic' },
-          { title: 'Orchestral', value: 'orchestral' },
-          { title: 'World', value: 'world' },
-          { title: 'Ancient', value: 'ancient' }
+  title: 'Genre',
+  type: 'array',
+  of: [{ type: 'string' }],
+  options: {
+    list: [
+      { title: 'Cinematic', value: 'cinematic' },
+      { title: 'Ambient', value: 'ambient' },
+      { title: 'Traditional', value: 'traditional' },
+      { title: 'Electronic', value: 'electronic' },
+      { title: 'Orchestral', value: 'orchestral' },
+      { title: 'World', value: 'world' },
+      { title: 'Ancient', value: 'ancient' },
+
+      { title: 'Drone', value: 'drone' },
+      { title: 'Texture', value: 'texture' },
+      { title: 'Atmosphere', value: 'atmosphere' },
+      { title: 'Transition', value: 'transition' },
+      { title: 'Impact', value: 'impact' },
+      { title: 'Whoosh', value: 'whoosh' },
+      { title: 'Riser', value: 'riser' },
+      { title: 'Downer', value: 'downer' },
+
+      { title: 'Sci-Fi', value: 'sci-fi' },
+      { title: 'Fantasy', value: 'fantasy' },
+      { title: 'Horror', value: 'horror' },
+      { title: 'Industrial', value: 'industrial' },
+      { title: 'Tribal', value: 'tribal' },
+      { title: 'Hybrid', value: 'hybrid' },
+
+      { title: 'Loop', value: 'loop' },
+      { title: 'Underscore', value: 'underscore' },
+      { title: 'Trailer', value: 'trailer' },
+      { title: 'Pulse', value: 'pulse' },
+      { title: 'Percussion', value: 'percussion' }
         ]
       }
     },
@@ -132,57 +155,79 @@ export default {
     // Musical Details
     {
       name: 'mood',
-      title: 'Mood',
-      type: 'array',
-      of: [{ type: 'string' }],
-      options: {
-        list: [
-          'Epic',
-          'Dark',
-          'Mystical',
-          'Spiritual',
-          'Calm',
-          'Suspense',
-          'Heroic',
-          'Meditative',
-          'Ancient'
+  title: 'Mood',
+  type: 'array',
+  of: [{ type: 'string' }],
+  options: {
+    list: [
+      'Epic',
+      'Dark',
+      'Mystical',
+      'Spiritual',
+      'Calm',
+      'Suspense',
+      'Heroic',
+      'Meditative',
+      'Ancient',
+      'Aggressive',
+      'Atmospheric',
+      'Dreamy',
+      'Emotional',
+      'Ethereal',
+      'Foreboding',
+      'Mysterious',
+      'Powerful',
+      'Sad',
+      'Hopeful',
+      'Tense'
         ]
       }
     },
 
     {
-      name: 'instruments',
-      title: 'Instruments',
-      type: 'array',
-      of: [{ type: 'string' }],
-      options: {
-        list: [
-          'Balafon',
-          'Bansuri',
-          'Calabash',
-          'Choir',
-          'Darbuka',
-          'Dholak',
-          'Djembe',
-          'Drums',
-          'Dunun',
-          'Ensemble',
-          'Flute',
-          'Frame Drums',
-          'Ghatam',
-          'Guitar',
-          'Harmonium',
-          'Harp',
-          'Kora',
-          'Ngoni',
-          'Oud',
-          'Piano',
-          'Strings',
-          'Synth',
-          'Tabla',
-          'Tanpura',
-          'Xylophone',
-          'Zurna'
+     name: 'instruments',
+  title: 'Instruments',
+  type: 'array',
+  of: [{ type: 'string' }],
+  options: {
+    list: [
+      'Balafon',
+      'Bansuri',
+      'Calabash',
+      'Choir',
+      'Darbuka',
+      'Dholak',
+      'Djembe',
+      'Drums',
+      'Dunun',
+      'Ensemble',
+      'Flute',
+      'Frame Drums',
+      'Ghatam',
+      'Guitar',
+      'Harmonium',
+      'Harp',
+      'Kora',
+      'Ngoni',
+      'Oud',
+      'Piano',
+      'Strings',
+      'Synth',
+      'Tabla',
+      'Tanpura',
+      'Xylophone',
+      'Zurna',
+
+      'Braam',
+      'FX',
+      'Field Recording',
+      'Granular',
+      'Pads',
+      'Percussion',
+      'Sound Design',
+      'Sub Bass',
+      'Textures',
+      'Voice'
         ]
       }
     },

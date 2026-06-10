@@ -89,48 +89,108 @@ export default {
       of: [{ type: 'block' }]
     },
 
-    // 🗂 Category
-    {
-      name: 'category',
-      title: 'Category',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Drum Pack', value: 'drum-pack' },
-          { title: 'Ambient Pack', value: 'ambient-pack' },
-          { title: 'Traditional Instruments', value: 'traditional-instruments' },
-          { title: 'Cinematic Pack', value: 'cinematic-pack' },
-          { title: 'Sound FX Pack', value: 'sound-fx-pack' },
-          { title: 'Synth Pack', value: 'synth-pack' },
-          { title: 'Drum Library', value: 'drum-library' }
-        ]
-      }
-    },
+   // 🗂 Category
+{
+  name: 'category',
+  title: 'Category',
+  type: 'string',
+  options: {
+    list: [
+      { title: 'Drum Pack', value: 'drum-pack' },
+      { title: 'Ambient Pack', value: 'ambient-pack' },
+      { title: 'Traditional Instruments', value: 'traditional-instruments' },
+      { title: 'Cinematic Pack', value: 'cinematic-pack' },
+      { title: 'Sound FX Pack', value: 'sound-fx-pack' },
+      { title: 'Sound Design Pack', value: 'sound-design-pack' },
+      { title: 'Synth Pack', value: 'synth-pack' },
+      { title: 'Drum Library', value: 'drum-library' },
 
-    // 🎼 Genre tags
-    {
-      name: 'packGenre',
-      title: 'Pack Genre',
-      type: 'array',
-      of: [{ type: 'string' }],
-      options: {
-        list: [
-          'Cinematic',
-          'Ambient',
-          'Traditional',
-          'Electronic',
-          'Orchestral',
-          'World',
-          'Ancient'
-        ]
-      }
-    },
+      { title: 'Atmosphere Pack', value: 'atmosphere-pack' },
+      { title: 'Drone Pack', value: 'drone-pack' },
+      { title: 'Field Recording Pack', value: 'field-recording-pack' }
+    ]
+  }
+},
 
-    {
-      name: 'totalFiles',
-      title: 'Total Files',
-      type: 'number'
-    },
+// 🎼 Genre tags
+{
+  name: 'packGenre',
+  title: 'Pack Genre',
+  type: 'array',
+  of: [{ type: 'string' }],
+  options: {
+    list: [
+      'Cinematic',
+      'Ambient',
+      'Traditional',
+      'Electronic',
+      'Orchestral',
+      'World',
+      'Ancient',
+
+      'Drone',
+      'Texture',
+      'Atmosphere',
+      'Transition',
+      'Impact',
+      'Whoosh',
+      'Riser',
+      'Downer',
+
+      'Sci-Fi',
+      'Fantasy',
+      'Horror',
+      'Industrial',
+      'Tribal',
+      'Hybrid',
+
+      'Loop',
+      'Underscore',
+      'Trailer',
+      'Pulse',
+      'Percussion'
+    ]
+  }
+},
+
+// 🎭 Pack Mood
+{
+  name: 'packMood',
+  title: 'Pack Mood',
+  type: 'array',
+  of: [{ type: 'string' }],
+  options: {
+    list: [
+      'Epic',
+      'Dark',
+      'Mystical',
+      'Spiritual',
+      'Calm',
+      'Suspense',
+      'Heroic',
+      'Meditative',
+      'Ancient',
+
+      'Aggressive',
+      'Atmospheric',
+      'Dreamy',
+      'Emotional',
+      'Ethereal',
+      'Foreboding',
+      'Mysterious',
+      'Powerful',
+      'Sad',
+      'Hopeful',
+      'Tense'
+    ]
+  }
+},
+
+{
+  name: 'totalFiles',
+  title: 'Total Files',
+  type: 'number'
+},
 
     // 🔥 Multiple download links
     {

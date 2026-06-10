@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import Header from "../components/Header";
@@ -42,7 +42,6 @@ const query = groq`
     }
   },
   category,
-  trackTitle,
   genre,
   mood,
   bpm,
@@ -56,12 +55,18 @@ const query = groq`
   downloadUrls[],
   description,
   affiliateLinks,
-  tracks[]->{ _id, title, trackTitle },
+  tracks[]->{ 
+    _id, 
+    title,
+    duration,
+    bpm 
+  },
   totalFiles,
   releaseDate,
   packGenre,
+  packMood,
   album->{ title },
-  key,
+  keyScale,
   energyLevel,
   loopable,
   usageType,
@@ -92,14 +97,21 @@ const allCategories = [
   { value: "meditation", title: "Meditation" },
   { value: "world-traditional", title: "World" },
   { value: "sound-effects", title: "SFX" },
+  { value: "sound-design", title: "Sound Design" },
   { value: "ambient", title: "Ambient" },
+  
+  // Album / Pack Categories
   { value: "drum-pack", title: "Drums" },
   { value: "ambient-pack", title: "Ambient Packs" },
   { value: "traditional-instruments", title: "Traditional" },
   { value: "cinematic-pack", title: "Cinematic Packs" },
   { value: "sound-fx-pack", title: "SFX Packs" },
+  { value: "sound-design-pack", title: "Sound Design Packs" },
   { value: "synth-pack", title: "Synth" },
   { value: "drum-library", title: "Libraries" },
+  { value: "atmosphere-pack", title: "Atmosphere Packs" },
+  { value: "drone-pack", title: "Drone Packs" },
+  { value: "field-recording-pack", title: "Field Recording Packs" },
 ];
 
 // Standalone Audio Player - No external dependencies
@@ -109,41 +121,33 @@ function StandaloneAudioPlayer({ audioUrl }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
-
   const formatTime = (time) => {
     if (!time || isNaN(time)) return "0:00";
     const min = Math.floor(time / 60);
     const sec = Math.floor(time % 60);
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
-
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
       setIsLoaded(true);
     };
-
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleEnded = () => setIsPlaying(false);
-
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
-
     return () => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
     };
   }, []);
-
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio || !isLoaded) return;
-
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
@@ -154,26 +158,21 @@ function StandaloneAudioPlayer({ audioUrl }) {
           a.currentTime = 0;
         }
       });
-
       audio.play().then(() => {
         setIsPlaying(true);
       }).catch((e) => console.log("Play failed:", e));
     }
   };
-
   const seek = (e) => {
     const audio = audioRef.current;
     if (!audio || !duration) return;
-
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
     audio.currentTime = percent * duration;
   };
-
   return (
     <div className="w-full flex items-center gap-3 bg-zinc-950/50 p-3 rounded-lg">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
-
       <button
         onClick={togglePlay}
         disabled={!isLoaded}
@@ -194,7 +193,6 @@ function StandaloneAudioPlayer({ audioUrl }) {
           </svg>
         )}
       </button>
-
       <div className="flex-1 flex items-center gap-2">
         <div
           className="flex-1 h-1.5 bg-white/10 rounded-full cursor-pointer relative overflow-hidden"
@@ -218,17 +216,15 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
   const f = item;
   const slug = f.slug?.current || item._id;
   const isLiked = likes[slug] > 0;
-
-  const title = f.trackTitle || f.title || "Untitled";
-  const artistName = f.contributor?.name || f.album?.title || "Adinkra Audio";
+  const title = f.title || "Untitled";
+  const artistName = f.contributor?.name || "adinkra media";
+  const albumName = f.album?.title || "—";
   const cover = f.coverImage?.asset?.url || "/placeholder.jpg";
   const price = f.freeDownload ? "Free" : `$${Number(f.price || 0).toFixed(2)}`;
   const previewUrl = f.previewAudio?.asset?.url || null;
 
-  const tags = [
-    ...(Array.isArray(f.genre) ? f.genre : [f.genre]).filter(Boolean),
-    ...(Array.isArray(f.mood) ? f.mood : [f.mood]).filter(Boolean),
-  ].slice(0, 2);
+  const genres = Array.isArray(f.genre) ? f.genre.slice(0, 2) : [f.genre].filter(Boolean);
+  const moods = Array.isArray(f.mood) ? f.mood.slice(0, 2) : [f.mood].filter(Boolean);
 
   return (
     <div className="group">
@@ -255,11 +251,9 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             )}
           </button>
         </div>
-
         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900 ring-1 ring-white/10">
           <img src={cover} alt={title} className="w-full h-full object-cover" />
         </div>
-
         <div className="flex-1 min-w-0">
           <div className={`font-medium text-sm md:text-base leading-tight ${isPlaying ? "text-adinkra-highlight" : "text-white"} break-words`}>
             {title}
@@ -275,21 +269,24 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             >
               {artistName}
             </div>
-            {tags.length > 0 && (
+            <span className="mx-1">•</span>
+            <span className="truncate">Album: {albumName}</span>
+          </div>
+          <div className="text-xs text-adinkra-gold/50 flex flex-wrap items-center gap-1">
+            <span>Category: {f.category || "—"}</span>
+            {genres.length > 0 && (
               <>
                 <span className="mx-1">•</span>
-                <span className="truncate">{tags.join(", ")}</span>
+                <span>Genre: {genres.join(", ")}</span>
+              </>
+            )}
+            {moods.length > 0 && (
+              <>
+                <span className="mx-1">•</span>
+                <span>Mood: {moods.join(", ")}</span>
               </>
             )}
           </div>
-        </div>
-
-        <div className="hidden md:block text-xs text-adinkra-gold/40 w-16 text-right font-mono">
-          {f.bpm ? `${f.bpm} BPM` : ""}
-        </div>
-
-        <div className="hidden md:block text-xs text-adinkra-gold/40 w-16 text-right font-mono">
-          {f.duration || ""}
         </div>
 
         <button
@@ -303,11 +300,9 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
-
         <div className="text-sm font-medium text-adinkra-gold whitespace-nowrap">
           {price}
         </div>
-
         <button
           onClick={() => onAddToCart(item)}
           className={`p-2 rounded-lg transition-colors ${
@@ -327,8 +322,6 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           )}
         </button>
       </div>
-
-      {/* Inline Player for Single Track */}
       {isPlaying && previewUrl && (
         <div className="px-3 pb-3">
           <div className="pl-11 md:pl-11">
@@ -340,7 +333,7 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
   );
 }
 
-// Album Accordion with Built-in Player
+// Album Accordion with Built-in Player (unchanged)
 function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
   const [isOpen, setIsOpen] = useState(false);
   const f = item;
@@ -349,7 +342,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
   const title = f.title || "Untitled";
   const price = f.freeDownload ? "Free" : `$${Number(f.price || 0).toFixed(2)}`;
   const isLiked = likes[slug] > 0;
-
   const trackCount = f.totalFiles || (Array.isArray(f.tracks) ? f.tracks.length : 0);
   const genre = Array.isArray(f.packGenre) ? f.packGenre[0] : f.packGenre;
 
@@ -383,7 +375,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
             </svg>
           </div>
         </div>
-
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-white text-lg md:text-xl break-words leading-tight">
             {title}
@@ -396,7 +387,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
             {f.freeDownload && <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">FREE</span>}
           </div>
         </div>
-
         <div className="hidden md:flex items-center gap-3">
           <span className="text-xl font-bold text-adinkra-gold">{price}</span>
           <button
@@ -447,6 +437,21 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
             </div>
           )}
 
+          {/* Tracks List - Added fix */}
+          {Array.isArray(f.tracks) && f.tracks.length > 0 && (
+            <div>
+              <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-3">Tracks Included</h4>
+              <div className="bg-zinc-950/30 rounded-xl p-4 space-y-2 text-sm">
+                {f.tracks.map((track, idx) => (
+                  <div key={track._id} className="flex justify-between py-1 border-b border-white/10 last:border-0">
+                    <span>{idx + 1}. {track.title}</span>
+                    {track.duration && <span className="text-adinkra-gold/60 font-mono">{track.duration}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-4">
@@ -456,7 +461,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                   {f.description ? renderPortableText(f.description) : <p className="text-adinkra-gold/40 italic">No description available</p>}
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-adinkra-gold/40 block text-xs uppercase tracking-wider mb-1">Category</span>
@@ -493,7 +497,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                   </div>
                 </div>
               )}
-
               {downloadUrls.length > 0 && (
                 <div>
                   <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-2">Download Files</h4>
@@ -509,7 +512,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                   </div>
                 </div>
               )}
-
               {/* Mobile Actions */}
               <div className="flex gap-3 md:hidden pt-4 border-t border-white/10">
                 <button
@@ -551,7 +553,6 @@ function AudioContent() {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartToast, setCartToast] = useState(false);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
-
   const { addToCart, cartItems, clearCart } = useCart();
 
   useEffect(() => {
@@ -586,7 +587,6 @@ function AudioContent() {
       .select("id, count")
       .eq("slug", slug)
       .maybeSingle();
-
     if (existing) {
       await supabase.from("likes").update({ count: existing.count + 1 }).eq("id", existing.id);
       setLikes((prev) => ({ ...prev, [slug]: existing.count + 1 }));
@@ -601,7 +601,6 @@ function AudioContent() {
     const f = item;
     if (selectedCategory !== "All" && f.category !== selectedCategory) return false;
     if (!searchQuery) return true;
-
     const q = searchQuery.toLowerCase();
     const genreMatch = Array.isArray(f.genre)
       ? f.genre.some((g) => g.toLowerCase().includes(q))
@@ -609,11 +608,14 @@ function AudioContent() {
     const moodMatch = Array.isArray(f.mood)
       ? f.mood.some((m) => m.toLowerCase().includes(q))
       : (f.mood || "").toLowerCase().includes(q);
-
+    const packGenreMatch = Array.isArray(f.packGenre)
+      ? f.packGenre.some((g) => g.toLowerCase().includes(q))
+      : (f.packGenre || "").toLowerCase().includes(q);
     return (
-      (f.trackTitle || f.title || "").toLowerCase().includes(q) ||
+      (f.title || "").toLowerCase().includes(q) ||
       genreMatch ||
-      moodMatch
+      moodMatch ||
+      packGenreMatch
     );
   });
 
@@ -636,19 +638,16 @@ function AudioContent() {
     const f = item;
     const contentType = item._type;
     const isFree = f.freeDownload === true;
-
     let downloadUrls = [];
     if (contentType === "audioTrack") {
       if (f.fullDownload?.asset?.url) downloadUrls = [f.fullDownload.asset.url];
     } else if (contentType === "album") {
       if (Array.isArray(f.downloadUrls)) downloadUrls = f.downloadUrls.filter(Boolean);
     }
-
     if (downloadUrls.length === 0) {
       alert("No download file available for this item.");
       return;
     }
-
     if (isFree) {
       downloadUrls.forEach((url) => {
         const link = document.createElement("a");
@@ -661,14 +660,12 @@ function AudioContent() {
     } else {
       const priceValue = Number(f.price ?? 0);
       const finalPrice = isNaN(priceValue) ? 0 : priceValue;
-
       addToCart({
         slug: f.slug?.current || item._id,
-        title: f.trackTitle || f.title || "Untitled",
+        title: f.title || "Untitled",
         price: finalPrice,
         downloadUrls,
       });
-
       setCartToast(true);
       setTimeout(() => setCartToast(false), 2000);
     }
@@ -683,7 +680,6 @@ function AudioContent() {
   return (
     <div className="bg-adinkra-bg text-adinkra-gold min-h-screen">
       <Header />
-
       <section className="relative h-[30vh] min-h-[200px] flex items-end pb-6 overflow-hidden bg-gradient-to-b from-zinc-900 to-adinkra-bg">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-adinkra-highlight/20 via-transparent to-transparent" />
@@ -697,7 +693,6 @@ function AudioContent() {
           </p>
         </div>
       </section>
-
       <div className="sticky top-0 z-40 bg-adinkra-bg/95 backdrop-blur-lg border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -742,7 +737,6 @@ function AudioContent() {
           </div>
         </div>
       </div>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-32">
         {/* SINGLE TRACKS */}
         {singles.length > 0 && (
@@ -752,13 +746,11 @@ function AudioContent() {
               <span className="text-sm text-adinkra-gold/40">{singles.length} tracks</span>
             </div>
             <div className="bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-              <div className="hidden md:grid grid-cols-[2.5rem_3rem_1fr_4rem_4rem_2.5rem_4rem_3rem] gap-3 px-4 py-3 text-xs text-adinkra-gold/40 uppercase tracking-wider border-b border-white/5">
+              <div className="hidden md:grid grid-cols-[2.5rem_3rem_1fr_1fr_5rem_4rem_3rem] gap-3 px-4 py-3 text-xs text-adinkra-gold/40 uppercase tracking-wider border-b border-white/5">
                 <span>#</span>
                 <span></span>
                 <span>Title</span>
-                <span className="text-right">BPM</span>
-                <span className="text-right">Time</span>
-                <span></span>
+                <span>Album / Collection</span>
                 <span className="text-right">Price</span>
                 <span></span>
               </div>
