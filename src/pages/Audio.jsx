@@ -233,7 +233,8 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           isPlaying ? "bg-white/10 border-white/10" : ""
         }`}
       >
-        <div className="hidden md:flex w-8 justify-center flex-shrink-0">
+        {/* Play Button Area - Now visible on mobile */}
+        <div className="w-8 flex justify-center flex-shrink-0">
           <span className="text-sm text-adinkra-gold/40 group-hover:hidden font-mono">{index + 1}</span>
           <button
             onClick={onPlay}
