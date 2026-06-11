@@ -211,7 +211,7 @@ function StandaloneAudioPlayer({ audioUrl }) {
   );
 }
 
-// Track Row Component with Inline Player
+// Track Row Component with Inline Player - UPDATED WITH BADGES
 function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, onAddToCart, navigate }) {
   const f = item;
   const slug = f.slug?.current || item._id;
@@ -251,41 +251,55 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             )}
           </button>
         </div>
+
         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900 ring-1 ring-white/10">
           <img src={cover} alt={title} className="w-full h-full object-cover" />
         </div>
+
         <div className="flex-1 min-w-0">
           <div className={`font-medium text-sm md:text-base leading-tight ${isPlaying ? "text-adinkra-highlight" : "text-white"} break-words`}>
             {title}
           </div>
+
+          {/* Artist & Album */}
           <div className="text-xs text-adinkra-gold/50 mt-1 flex flex-wrap items-center gap-1">
             <div
               onClick={() =>
-                navigate(
-                  `/contributor/${f.contributor?.slug?.current}`
-                )
+                navigate(`/contributor/${f.contributor?.slug?.current}`)
               }
               className="truncate cursor-pointer hover:text-adinkra-highlight transition-colors"
             >
               {artistName}
             </div>
-            <span className="mx-1">•</span>
+            <span className="mx-1 text-white/30">•</span>
             <span className="truncate">Album: {albumName}</span>
           </div>
-          <div className="text-xs text-adinkra-gold/50 flex flex-wrap items-center gap-1">
-            <span>Category: {f.category || "—"}</span>
-            {genres.length > 0 && (
-              <>
-                <span className="mx-1">•</span>
-                <span>Genre: {genres.join(", ")}</span>
-              </>
+
+          {/* Compact Badges */}
+          <div className="flex flex-wrap gap-1 mt-2">
+            {f.category && (
+              <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-adinkra-gold/80">
+                {f.category}
+              </span>
             )}
-            {moods.length > 0 && (
-              <>
-                <span className="mx-1">•</span>
-                <span>Mood: {moods.join(", ")}</span>
-              </>
-            )}
+
+            {genres.map((genre) => (
+              <span
+                key={genre}
+                className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-adinkra-gold/80"
+              >
+                {genre}
+              </span>
+            ))}
+
+            {moods.map((mood) => (
+              <span
+                key={mood}
+                className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-adinkra-gold/80"
+              >
+                {mood}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -300,9 +314,11 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
+
         <div className="text-sm font-medium text-adinkra-gold whitespace-nowrap">
           {price}
         </div>
+
         <button
           onClick={() => onAddToCart(item)}
           className={`p-2 rounded-lg transition-colors ${
@@ -322,6 +338,7 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           )}
         </button>
       </div>
+
       {isPlaying && previewUrl && (
         <div className="px-3 pb-3">
           <div className="pl-11 md:pl-11">
@@ -437,7 +454,7 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
             </div>
           )}
 
-          {/* Tracks List - Added fix */}
+          {/* Tracks List */}
           {Array.isArray(f.tracks) && f.tracks.length > 0 && (
             <div>
               <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-3">Tracks Included</h4>
@@ -750,7 +767,7 @@ function AudioContent() {
                 <span>#</span>
                 <span></span>
                 <span>Title</span>
-                <span>Album / Collection</span>
+                <span>Library</span>
                 <span className="text-right">Price</span>
                 <span></span>
               </div>
