@@ -78,7 +78,7 @@ const query = groq`
 const licensingFaqs = [
   {
     question: "Can I use these tracks commercially?",
-    answer: "Yes. Unless stated otherwise, you may use Adinkra Audio in films, podcasts, games, or educational content with credit.",
+    answer: "Yes. Unless stated otherwise, you may use Adinkra Library in films, podcasts, games, or educational content with credit.",
   },
   {
     question: "What license do I get when I purchase?",
@@ -737,7 +737,7 @@ function AudioContent() {
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full">
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-2">
-            Adinkra <span className="text-adinkra-highlight">Audio</span>
+            Adinkra <span className="text-adinkra-highlight">Library</span>
           </h1>
           <p className="text-base text-adinkra-gold/60 max-w-xl">
             Premium royalty-free music & cinematic soundscapes
@@ -865,7 +865,7 @@ function AudioContent() {
         )}
 
         <div className="mt-16 max-w-2xl">
-          <AccordionFaq title="Adinkra Audio Licensing FAQ" faqs={licensingFaqs} />
+          <AccordionFaq title="Adinkra Library Licensing FAQ" faqs={licensingFaqs} />
         </div>
       </main>
 
