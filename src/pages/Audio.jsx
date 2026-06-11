@@ -171,7 +171,7 @@ function StandaloneAudioPlayer({ audioUrl }) {
     audio.currentTime = percent * duration;
   };
   return (
-    <div className="w-full flex items-center gap-3 bg-zinc-950/50 p-3 rounded-lg">
+    <div className="w-full flex items-center gap-2 md:gap-3 bg-zinc-950/50 p-3 rounded-lg">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       <button
         onClick={togglePlay}
@@ -203,7 +203,7 @@ function StandaloneAudioPlayer({ audioUrl }) {
             style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
           />
         </div>
-        <span className="text-xs text-adinkra-gold/60 font-mono whitespace-nowrap">
+        <span className="hidden sm:block text-xs text-adinkra-gold/60 font-mono whitespace-nowrap">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
       </div>
@@ -233,7 +233,7 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           isPlaying ? "bg-white/10 border-white/10" : ""
         }`}
       >
-        <div className="w-8 flex justify-center flex-shrink-0">
+        <div className="hidden md:flex w-8 justify-center flex-shrink-0">
           <span className="text-sm text-adinkra-gold/40 group-hover:hidden font-mono">{index + 1}</span>
           <button
             onClick={onPlay}
@@ -252,33 +252,45 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           </button>
         </div>
 
-        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900 ring-1 ring-white/10">
+        <div className="w-14 h-14 md:w-12 md:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900 ring-1 ring-white/10">
           <img src={cover} alt={title} className="w-full h-full object-cover" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className={`font-medium text-sm md:text-base leading-tight ${isPlaying ? "text-adinkra-highlight" : "text-white"} break-words`}>
+          <div className={`font-medium text-[13px] md:text-base leading-tight ${isPlaying ? "text-adinkra-highlight" : "text-white"} break-words`}>
             {title}
           </div>
 
-          {/* Artist & Album */}
-          <div className="text-xs text-adinkra-gold/50 mt-1 flex flex-wrap items-center gap-1">
+          {/* Artist & Album - Stacked */}
+          <div className="mt-1">
             <div
               onClick={() =>
                 navigate(`/contributor/${f.contributor?.slug?.current}`)
               }
-              className="truncate cursor-pointer hover:text-adinkra-highlight transition-colors"
+              className="text-xs text-adinkra-gold/50 cursor-pointer hover:text-adinkra-highlight transition-colors truncate"
             >
               {artistName}
             </div>
-            <span className="mx-1 text-white/30">•</span>
-            <span className="truncate">Album: {albumName}</span>
+
+            {albumName !== "—" && (
+              <div className="text-xs text-adinkra-gold/40 truncate">
+                {albumName}
+              </div>
+            )}
           </div>
 
           {/* Compact Badges */}
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {f.category && (
-              <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-adinkra-gold/80">
+              <span className="
+px-2
+py-0.5
+rounded-full
+bg-white/5
+text-[10px]
+md:text-xs
+text-adinkra-gold/80
+">
                 {f.category}
               </span>
             )}
@@ -286,7 +298,15 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             {genres.map((genre) => (
               <span
                 key={genre}
-                className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-adinkra-gold/80"
+                className="
+px-2
+py-0.5
+rounded-full
+bg-white/5
+text-[10px]
+md:text-xs
+text-adinkra-gold/80
+"
               >
                 {genre}
               </span>
@@ -295,7 +315,15 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             {moods.map((mood) => (
               <span
                 key={mood}
-                className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-adinkra-gold/80"
+                className="
+px-2
+py-0.5
+rounded-full
+bg-white/5
+text-[10px]
+md:text-xs
+text-adinkra-gold/80
+"
               >
                 {mood}
               </span>
@@ -315,13 +343,14 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           </svg>
         </button>
 
-        <div className="text-sm font-medium text-adinkra-gold whitespace-nowrap">
+        {/* Price - Hidden on mobile in row, shown below metadata */}
+        <div className="hidden md:block text-sm font-medium text-adinkra-gold whitespace-nowrap">
           {price}
         </div>
 
         <button
           onClick={() => onAddToCart(item)}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-3 md:p-2 rounded-lg transition-colors ${
             f.freeDownload
               ? "text-green-400 hover:bg-green-400/10"
               : "text-adinkra-highlight hover:bg-adinkra-highlight/10"
@@ -337,6 +366,11 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
             </svg>
           )}
         </button>
+      </div>
+
+      {/* Mobile price under metadata */}
+      <div className="md:hidden mt-2 text-adinkra-highlight text-xs font-semibold px-3">
+        {price}
       </div>
 
       {isPlaying && previewUrl && (
@@ -754,7 +788,7 @@ function AudioContent() {
           </div>
         </div>
       </div>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-32">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-8 pb-32">
         {/* SINGLE TRACKS */}
         {singles.length > 0 && (
           <section className="mb-12">
