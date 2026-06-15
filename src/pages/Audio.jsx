@@ -741,7 +741,7 @@ function AudioContent() {
             Adinkra <span className="text-adinkra-highlight">Library</span>
           </h1>
           <p className="text-base text-adinkra-gold/60 max-w-xl">
-            Premium royalty-free music & cinematic soundscapes
+            Professional audio for games, film, video, podcasts, and digital experiences.
           </p>
         </div>
       </section>
