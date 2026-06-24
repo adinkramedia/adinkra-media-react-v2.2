@@ -16,6 +16,7 @@ import BackgroundAudioPlayer from "./components/BackgroundAudioPlayer";
 // Pages
 import Home from "./pages/Home";
 import Audio from "./pages/Audio";
+import AudioItemPage from "./pages/AudioItemPage";
 import Downloads from "./pages/Downloads";
 
 import HouseOfAusar from "./pages/HouseOfAusar";
@@ -84,6 +85,11 @@ export default function App() {
               <Route
                 path="/audio"
                 element={<Audio />}
+              />
+
+              <Route
+                path="/audio/:slug"
+                element={<AudioItemPage />}
               />
 
               <Route

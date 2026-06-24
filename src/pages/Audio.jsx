@@ -211,7 +211,7 @@ function StandaloneAudioPlayer({ audioUrl }) {
   );
 }
 
-// Track Row Component with Inline Player - UPDATED WITH BADGES
+// Track Row Component with Inline Player
 function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, onAddToCart, navigate }) {
   const f = item;
   const slug = f.slug?.current || item._id;
@@ -258,7 +258,12 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className={`font-medium text-[13px] md:text-base leading-tight ${isPlaying ? "text-adinkra-highlight" : "text-white"} break-words`}>
+          <div
+            onClick={() => navigate(`/audio/${slug}`)}
+            className={`font-medium text-[13px] md:text-base leading-tight ${
+              isPlaying ? "text-adinkra-highlight" : "text-white"
+            } break-words cursor-pointer hover:text-adinkra-highlight transition-colors`}
+          >
             {title}
           </div>
 
@@ -283,15 +288,7 @@ function TrackRow({ item, index, isPlaying, onPlay, likes, onLike, loadingLike, 
           {/* Compact Badges */}
           <div className="flex flex-wrap gap-1.5 mt-2">
             {f.category && (
-              <span className="
-px-2
-py-0.5
-rounded-full
-bg-white/5
-text-[10px]
-md:text-xs
-text-adinkra-gold/80
-">
+              <span className="px-2 py-0.5 rounded-full bg-white/5 text-[10px] md:text-xs text-adinkra-gold/80">
                 {f.category}
               </span>
             )}
@@ -299,15 +296,7 @@ text-adinkra-gold/80
             {genres.map((genre) => (
               <span
                 key={genre}
-                className="
-px-2
-py-0.5
-rounded-full
-bg-white/5
-text-[10px]
-md:text-xs
-text-adinkra-gold/80
-"
+                className="px-2 py-0.5 rounded-full bg-white/5 text-[10px] md:text-xs text-adinkra-gold/80"
               >
                 {genre}
               </span>
@@ -316,15 +305,7 @@ text-adinkra-gold/80
             {moods.map((mood) => (
               <span
                 key={mood}
-                className="
-px-2
-py-0.5
-rounded-full
-bg-white/5
-text-[10px]
-md:text-xs
-text-adinkra-gold/80
-"
+                className="px-2 py-0.5 rounded-full bg-white/5 text-[10px] md:text-xs text-adinkra-gold/80"
               >
                 {mood}
               </span>
@@ -385,8 +366,8 @@ text-adinkra-gold/80
   );
 }
 
-// Album Accordion with Built-in Player (unchanged)
-function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
+// Album Accordion with Built-in Player
+function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart, navigate }) {
   const [isOpen, setIsOpen] = useState(false);
   const f = item;
   const slug = f.slug?.current || item._id;
@@ -407,6 +388,11 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
   const previewUrls = formatArray(f.previewAudioArray);
   const downloadUrls = formatArray(f.downloadUrls);
 
+  const handleNavigate = (e) => {
+    if (e) e.stopPropagation();
+    navigate(`/audio/${slug}`);
+  };
+
   return (
     <div className="bg-zinc-900/50 rounded-2xl border border-white/5 overflow-hidden">
       {/* Header */}
@@ -414,7 +400,10 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
         className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900 ring-1 ring-white/10 relative">
+        <div 
+          className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900 ring-1 ring-white/10 relative cursor-pointer"
+          onClick={handleNavigate}
+        >
           <img src={cover} alt={title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center md:hidden">
             <svg
@@ -428,7 +417,10 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-white text-lg md:text-xl break-words leading-tight">
+          <h3 
+            onClick={handleNavigate}
+            className="font-semibold text-white text-lg md:text-xl break-words leading-tight cursor-pointer hover:text-adinkra-highlight transition-colors"
+          >
             {title}
           </h3>
           <p className="text-sm text-adinkra-gold/50 mt-1">
@@ -469,10 +461,9 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
         </div>
       </div>
 
-      {/* Expanded Content */}
+      {/* Expanded Content - unchanged */}
       {isOpen && (
         <div className="border-t border-white/10 p-4 md:p-6 space-y-6">
-          {/* Preview Players */}
           {previewUrls.length > 0 && (
             <div className="bg-zinc-950/30 rounded-xl p-4">
               <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-3">Preview Audio ({previewUrls.length})</h4>
@@ -489,7 +480,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
             </div>
           )}
 
-          {/* Tracks List */}
           {Array.isArray(f.tracks) && f.tracks.length > 0 && (
             <div>
               <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-3">Tracks Included</h4>
@@ -505,7 +495,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
           )}
 
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Left Column */}
             <div className="space-y-4">
               <div>
                 <h4 className="text-xs uppercase tracking-wider text-adinkra-gold/40 mb-2">Description</h4>
@@ -535,7 +524,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
               </div>
             </div>
 
-            {/* Right Column */}
             <div className="space-y-4">
               {packGenres.length > 0 && (
                 <div>
@@ -564,7 +552,6 @@ function AlbumAccordion({ item, likes, onLike, loadingLike, onAddToCart }) {
                   </div>
                 </div>
               )}
-              {/* Mobile Actions */}
               <div className="flex gap-3 md:hidden pt-4 border-t border-white/10">
                 <button
                   onClick={() => onLike(slug)}
@@ -606,6 +593,10 @@ function AudioContent() {
   const [cartToast, setCartToast] = useState(false);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const { addToCart, cartItems, clearCart } = useCart();
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -674,6 +665,18 @@ function AudioContent() {
   const singles = filteredItems.filter((item) => item._type === "audioTrack");
   const albums = filteredItems.filter((item) => item._type === "album");
 
+  // Pagination
+  const indexOfLastSingle = currentPage * itemsPerPage;
+  const indexOfFirstSingle = indexOfLastSingle - itemsPerPage;
+  const paginatedSingles = singles.slice(indexOfFirstSingle, indexOfLastSingle);
+
+  const indexOfLastAlbum = currentPage * itemsPerPage;
+  const indexOfFirstAlbum = indexOfLastAlbum - itemsPerPage;
+  const paginatedAlbums = albums.slice(indexOfFirstAlbum, indexOfLastAlbum);
+
+  const totalPagesSingles = Math.ceil(singles.length / itemsPerPage);
+  const totalPagesAlbums = Math.ceil(albums.length / itemsPerPage);
+
   const handlePlay = (id) => {
     if (currentlyPlaying === id) {
       setCurrentlyPlaying(null);
@@ -727,6 +730,11 @@ function AudioContent() {
     const purchasedSlugs = cartItems.map((item) => item.slug);
     clearCart();
     navigate(`/downloads?slugs=${purchasedSlugs.join(",")}`);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -807,7 +815,7 @@ function AudioContent() {
                 <span></span>
               </div>
               <div className="divide-y divide-white/5">
-                {singles.map((item, index) => (
+                {paginatedSingles.map((item, index) => (
                   <TrackRow
                     key={item._id}
                     item={item}
@@ -823,6 +831,14 @@ function AudioContent() {
                 ))}
               </div>
             </div>
+
+            {totalPagesSingles > 1 && (
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPagesSingles} 
+                onPageChange={handlePageChange} 
+              />
+            )}
           </section>
         )}
 
@@ -834,7 +850,7 @@ function AudioContent() {
               <span className="text-sm text-adinkra-gold/40">{albums.length} packs</span>
             </div>
             <div className="space-y-4">
-              {albums.map((item) => (
+              {paginatedAlbums.map((item) => (
                 <AlbumAccordion
                   key={item._id}
                   item={item}
@@ -842,9 +858,18 @@ function AudioContent() {
                   onLike={handleLike}
                   loadingLike={loadingLikes}
                   onAddToCart={handleAddOrDownload}
+                  navigate={navigate}
                 />
               ))}
             </div>
+
+            {totalPagesAlbums > 1 && (
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPagesAlbums} 
+                onPageChange={handlePageChange} 
+              />
+            )}
           </section>
         )}
 
@@ -898,6 +923,63 @@ function AudioContent() {
         onClose={() => setCartOpen(false)}
         onPurchaseComplete={handlePurchaseComplete}
       />
+    </div>
+  );
+}
+
+// Improved Pagination - Always shows first and last page
+function Pagination({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+
+  const pages = [1];
+  if (currentPage > 3) pages.push("...");
+  
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+  
+  for (let i = start; i <= end; i++) {
+    if (!pages.includes(i)) pages.push(i);
+  }
+  
+  if (currentPage < totalPages - 2) pages.push("...");
+  if (!pages.includes(totalPages)) pages.push(totalPages);
+
+  return (
+    <div className="flex justify-center items-center gap-2 mt-8">
+      <button
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+      >
+        Previous
+      </button>
+      
+      <div className="flex gap-1">
+        {pages.map((page, idx) => (
+          <button
+            key={idx}
+            onClick={() => typeof page === "number" && onPageChange(page)}
+            disabled={page === "..."}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+              page === currentPage 
+                ? "bg-adinkra-highlight text-adinkra-bg font-semibold" 
+                : page === "..." 
+                ? "text-adinkra-gold/50 cursor-default" 
+                : "bg-white/5 hover:bg-white/10"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
+      
+      <button
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+        className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+      >
+        Next
+      </button>
     </div>
   );
 }

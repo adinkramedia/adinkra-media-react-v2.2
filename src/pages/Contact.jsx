@@ -14,21 +14,27 @@ export default function Contact() {
           </h1>
 
           <p className="text-adinkra-gold/90 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-            Adinkra Media is a professional audio production studio specializing in cinematic music,
-            film scoring, sound design, and high-quality mixing & mastering for global clients.
+            Adinkra Media is an audio production and post-production company creating original music,
+            sound design, audio libraries, and sonic solutions for film, television, advertising, gaming,
+            broadcast, and digital media.
+
+            From custom composition and cinematic scoring to sound design, radio imaging, podcast production, mixing,
+            mastering, and audio licensing, we help brands, creators, agencies, and media companies bring their projects to life 
+            through powerful sound.
           </p>
         </div>
 
         {/* 👤 BIO */}
         <div className="mb-20 text-center max-w-3xl mx-auto">
           <h2 className="text-2xl font-bold text-adinkra-highlight mb-4">
-            About the Engineer
+            About Adinkra Media
           </h2>
 
           <p className="text-adinkra-gold/80 leading-relaxed">
-            Adinkra Media is led by a dedicated sound engineer and composer focused on delivering
-            high-quality, emotionally driven audio. From concept to final master, every project is
-            crafted with precision, clarity, and a strong sonic identity.
+            Founded by composer, sound designer, audio engineer, Ngonyama Yezwe Nqaba-Ncedo. 
+            Adinkra Media combines technical precision with creative storytelling to deliver distinctive, high-quality audio experiences.
+            Every project is approached with a commitment to clarity, emotion, and sonic excellence—whether developing original music, 
+            crafting immersive sound design, producing broadcast-ready audio, or building commercial audio assets for creators worldwide. 
           </p>
         </div>
 
