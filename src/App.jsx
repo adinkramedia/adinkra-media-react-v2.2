@@ -43,6 +43,15 @@ import ContributorDashboard from "./pages/ContributorDashboard";
 // Admin
 import AdminModeration from "./pages/AdminModeration";
 
+//Terms
+import Terms from "./pages/Terms";
+
+//privacy
+import Privacy from "./pages/Privacy";
+
+//refund
+import Refunds from "./pages/Refunds";
+
 // Games
 import Games from "./Games/Games";
 import MorabarabaGame from "./Games/MorabarabaGame";
@@ -212,6 +221,21 @@ export default function App() {
               <Route
                 path="/contact"
                 element={<Contact />}
+              />
+
+              <Route
+                path="/terms"
+                element={<Terms />}
+              />
+
+              <Route
+                path="/privacy"
+                element={<Privacy />}
+              />
+
+              <Route
+                path="/refunds"
+                element={<Refunds />}
               />
 
               {/* PROTECTED TEST */}
