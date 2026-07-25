@@ -45,7 +45,7 @@ export default function Downloads() {
         }
 
         // ---------------------------------------------------------
-        // VALIDATE & PARSE PRODUCT SLUGS (supports multiple)
+        // VALIDATE & PARSE PRODUCT SLUGS (unlimited)
         // ---------------------------------------------------------
         if (
           typeof productSlugsParam !== "string" ||
@@ -54,8 +54,8 @@ export default function Downloads() {
           throw new Error("No purchased products were provided.");
         }
 
-        // Handle both normal commas and possible encoded commas
-        const raw = productSlugsParam.replace(/%2C/gi, ",");
+        // Decode any URL-encoded commas and clean the list
+        const raw = decodeURIComponent(productSlugsParam).replace(/%2C/gi, ",");
 
         const purchasedSlugs = [
           ...new Set(
@@ -67,7 +67,9 @@ export default function Downloads() {
         ];
 
         console.log(
-          "[Downloads Debug] Purchased product slugs:",
+          "[Downloads Debug] Purchased product slugs (" +
+            purchasedSlugs.length +
+            "):",
           purchasedSlugs
         );
 
@@ -76,7 +78,7 @@ export default function Downloads() {
         }
 
         // ---------------------------------------------------------
-        // FETCH PRODUCTS FROM SANITY
+        // FETCH PRODUCTS FROM SANITY (works with any number of slugs)
         // ---------------------------------------------------------
         console.log(
           "[Downloads Debug] Fetching purchased products from Sanity..."
@@ -100,15 +102,13 @@ export default function Downloads() {
           }
         `;
 
-        console.log("[Downloads Debug] Sanity query:", query);
-
         const sanityProducts = await sanity.fetch(query, {
           slugs: purchasedSlugs,
         });
 
         console.log(
           "[Downloads Debug] Sanity returned products:",
-          sanityProducts
+          sanityProducts?.length
         );
 
         if (!Array.isArray(sanityProducts) || sanityProducts.length === 0) {
@@ -118,20 +118,16 @@ export default function Downloads() {
         }
 
         // ---------------------------------------------------------
-        // CHECK FOR MISSING PRODUCTS
+        // CHECK FOR MISSING PRODUCTS (soft warning)
         // ---------------------------------------------------------
         const missingSlugs = purchasedSlugs.filter(
-          (slug) => !sanityProducts.some((product) => product.slug === slug)
+          (slug) => !sanityProducts.some((p) => p.slug === slug)
         );
 
         if (missingSlugs.length > 0) {
-          console.error(
-            "[Downloads Debug] Products missing from Sanity:",
-            missingSlugs
-          );
-          // Soft warning instead of hard crash when some items are missing
           console.warn(
-            `Some products could not be found: ${missingSlugs.join(", ")}`
+            "[Downloads Debug] Some products missing from Sanity:",
+            missingSlugs
           );
         }
 
@@ -139,12 +135,13 @@ export default function Downloads() {
         // PRESERVE PURCHASE ORDER
         // ---------------------------------------------------------
         const orderedDownloads = purchasedSlugs
-          .map((slug) =>
-            sanityProducts.find((product) => product.slug === slug)
-          )
+          .map((slug) => sanityProducts.find((p) => p.slug === slug))
           .filter(Boolean);
 
-        console.log("[Downloads Debug] Ordered downloads:", orderedDownloads);
+        console.log(
+          "[Downloads Debug] Ordered downloads:",
+          orderedDownloads.length
+        );
 
         if (orderedDownloads.length === 0) {
           throw new Error(
@@ -152,28 +149,21 @@ export default function Downloads() {
           );
         }
 
-        // ---------------------------------------------------------
-        // DEBUG
-        // ---------------------------------------------------------
+        // Debug each item
         orderedDownloads.forEach((item) => {
-          console.group(`[Downloads Debug] Product: ${item.title}`);
+          console.group(`[Downloads Debug] ${item.title}`);
           console.log("Type:", item._type);
           console.log("Slug:", item.slug);
-          console.log("Full download (file):", item.fullDownload);
-          console.log("Resolved full download URL:", item.fullDownloadUrl);
-          console.log("Download URLs (album):", item.downloadUrls);
-          console.log("Total files:", item.totalFiles);
+          console.log("fullDownloadUrl:", item.fullDownloadUrl);
+          console.log("downloadUrls:", item.downloadUrls);
           console.groupEnd();
         });
 
         if (!cancelled) {
           setDownloads(orderedDownloads);
         }
-
-        console.log("[Downloads Debug] Downloads ready:", orderedDownloads);
       } catch (err) {
-        console.error("[Downloads Debug] Downloads error:", err);
-
+        console.error("[Downloads Debug] Error:", err);
         if (!cancelled) {
           setError(err?.message || "Unable to load your downloads.");
         }
@@ -267,19 +257,17 @@ export default function Downloads() {
       <div className="w-full max-w-4xl flex flex-col gap-8">
         {downloads.map((item) => {
           // =====================================================
-          // AUDIO TRACK (Single)
+          // AUDIO TRACK
           // =====================================================
           if (item._type === "audioTrack") {
-            let resolvedDownloadUrl =
+            let url =
               item.fullDownloadUrl ||
               item.fullDownload?.asset?.url ||
               null;
 
-            if (resolvedDownloadUrl) {
-              resolvedDownloadUrl = `${resolvedDownloadUrl}?dl`;
-            }
+            if (url) url = `${url}?dl`;
 
-            if (!resolvedDownloadUrl) {
+            if (!url) {
               return (
                 <div
                   key={item._id}
@@ -298,7 +286,7 @@ export default function Downloads() {
             return (
               <a
                 key={item._id}
-                href={resolvedDownloadUrl}
+                href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md"
@@ -309,15 +297,12 @@ export default function Downloads() {
           }
 
           // =====================================================
-          // ALBUM / PACK
+          // ALBUM
           // =====================================================
           if (item._type === "album") {
-            const urls =
-              Array.isArray(item.downloadUrls) && item.downloadUrls.length > 0
-                ? item.downloadUrls
-                    .map((url) => String(url).trim())
-                    .filter(Boolean)
-                : [];
+            const urls = Array.isArray(item.downloadUrls)
+              ? item.downloadUrls.map((u) => String(u).trim()).filter(Boolean)
+              : [];
 
             if (urls.length === 0) {
               return (
@@ -356,9 +341,7 @@ export default function Downloads() {
                       const filename = decodeURIComponent(
                         url.split("/").pop() || ""
                       );
-                      if (filename) {
-                        label = filename.replace(/\.zip$/i, "");
-                      }
+                      if (filename) label = filename.replace(/\.zip$/i, "");
                     } catch {
                       // keep default
                     }
