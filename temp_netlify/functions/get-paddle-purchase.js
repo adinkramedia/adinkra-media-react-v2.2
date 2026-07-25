@@ -17,11 +17,13 @@ export const handler = async (event) => {
       statusCode: 405,
 
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
       },
 
       body: JSON.stringify({
-        error: "Method not allowed",
+        error:
+          "Method not allowed",
       }),
     };
   }
@@ -36,7 +38,8 @@ export const handler = async (event) => {
         statusCode: 400,
 
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
         },
 
         body: JSON.stringify({
@@ -74,7 +77,8 @@ export const handler = async (event) => {
         statusCode: 500,
 
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
         },
 
         body: JSON.stringify({
@@ -89,7 +93,11 @@ export const handler = async (event) => {
         statusCode: 404,
 
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
+
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate",
         },
 
         body: JSON.stringify({
@@ -99,11 +107,44 @@ export const handler = async (event) => {
       };
     }
 
+    const products =
+      Array.isArray(
+        purchase.products
+      )
+        ? purchase.products
+        : [];
+
+    if (products.length === 0) {
+      console.error(
+        "Purchase exists but contains no products:",
+        transactionId
+      );
+
+      return {
+        statusCode: 500,
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate",
+        },
+
+        body: JSON.stringify({
+          error:
+            "Purchase was confirmed, but no products were recorded.",
+        }),
+      };
+    }
+
     return {
       statusCode: 200,
 
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
+
         "Cache-Control":
           "no-store, no-cache, must-revalidate",
       },
@@ -114,8 +155,7 @@ export const handler = async (event) => {
         transactionId:
           purchase.transaction_id,
 
-        products:
-          purchase.products || [],
+        products,
       }),
     };
   } catch (error) {
@@ -128,7 +168,8 @@ export const handler = async (event) => {
       statusCode: 500,
 
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
       },
 
       body: JSON.stringify({

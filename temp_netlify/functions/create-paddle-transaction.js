@@ -8,7 +8,6 @@ const sanity = createClient({
 });
 
 export const handler = async (event) => {
-  // Only allow POST requests
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -22,10 +21,8 @@ export const handler = async (event) => {
   }
 
   try {
-    // Get product slugs from the frontend
     const { slugs } = JSON.parse(event.body || "{}");
 
-    // Make sure slugs is an array
     if (!Array.isArray(slugs) || slugs.length === 0) {
       return {
         statusCode: 400,
@@ -38,11 +35,30 @@ export const handler = async (event) => {
       };
     }
 
-    // Remove duplicate slugs
-    const uniqueSlugs = [...new Set(slugs)];
+    const uniqueSlugs = [
+      ...new Set(
+        slugs
+          .filter(
+            (slug) =>
+              typeof slug === "string"
+          )
+          .map((slug) => slug.trim())
+          .filter(Boolean)
+      ),
+    ];
 
-    // Find all products in Sanity.
-    // Searches both Albums / Collections and Audio Tracks.
+    if (uniqueSlugs.length === 0) {
+      return {
+        statusCode: 400,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          error: "No valid product slugs provided",
+        }),
+      };
+    }
+
     const products = await sanity.fetch(
       `*[
         (_type == "album" || _type == "audioTrack") &&
@@ -59,14 +75,15 @@ export const handler = async (event) => {
       }
     );
 
-    // Make sure every requested product was found
     const foundSlugs = products.map(
       (product) => product.slug
     );
 
-    const missingSlugs = uniqueSlugs.filter(
-      (slug) => !foundSlugs.includes(slug)
-    );
+    const missingSlugs =
+      uniqueSlugs.filter(
+        (slug) =>
+          !foundSlugs.includes(slug)
+      );
 
     if (missingSlugs.length > 0) {
       console.error(
@@ -80,20 +97,27 @@ export const handler = async (event) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          error: "One or more products were not found",
+          error:
+            "One or more products were not found",
           missingSlugs,
         }),
       };
     }
 
-    // Make sure every product has a valid price
-    const invalidProducts = products.filter(
-      (product) =>
-        typeof product.price !== "number" ||
-        product.price <= 0
-    );
+    const invalidProducts =
+      products.filter(
+        (product) =>
+          typeof product.price !==
+            "number" ||
+          product.price <= 0
+      );
 
     if (invalidProducts.length > 0) {
+      console.error(
+        "Products with invalid prices:",
+        invalidProducts
+      );
+
       return {
         statusCode: 400,
         headers: {
@@ -102,18 +126,21 @@ export const handler = async (event) => {
         body: JSON.stringify({
           error:
             "One or more products do not have a valid price",
-          products: invalidProducts.map((product) => ({
-            id: product._id,
-            title: product.title,
-            slug: product.slug,
-            type: product._type,
-            price: product.price,
-          })),
+
+          products:
+            invalidProducts.map(
+              (product) => ({
+                id: product._id,
+                title: product.title,
+                slug: product.slug,
+                type: product._type,
+                price: product.price,
+              })
+            ),
         }),
       };
     }
 
-    // Paddle Sandbox API key
     const paddleApiKey =
       process.env.PADDLE_API_KEY;
 
@@ -128,14 +155,12 @@ export const handler = async (event) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          error: "PADDLE_API_KEY is missing",
+          error:
+            "PADDLE_API_KEY is missing",
         }),
       };
     }
 
-    // Paddle Sandbox Product ID
-    // This is the single umbrella product
-    // used for all Adinkra Media products.
     const paddleProductId =
       process.env.PADDLE_PRODUCT_ID;
 
@@ -150,75 +175,83 @@ export const handler = async (event) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          error: "PADDLE_PRODUCT_ID is missing",
+          error:
+            "PADDLE_PRODUCT_ID is missing",
         }),
       };
     }
 
-    // Create one Paddle item for every
-    // product in the Sanity cart.
-    const paddleItems = products.map(
-      (product) => ({
-        quantity: 1,
+    const paddleItems =
+      products.map(
+        (product) => ({
+          quantity: 1,
 
-        price: {
-          product_id: paddleProductId,
+          price: {
+            product_id:
+              paddleProductId,
 
-          // This is the actual product title
-          // from Sanity.
-          description: product.title,
+            description:
+              product.title,
 
-          unit_price: {
-            amount: Math.round(
-              product.price * 100
-            ).toString(),
+            unit_price: {
+              amount:
+                Math.round(
+                  product.price * 100
+                ).toString(),
 
-            currency_code: "USD",
+              currency_code:
+                "USD",
+            },
           },
-        },
-      })
+        })
+      );
+
+    const purchaseItems =
+      products.map(
+        (product) => ({
+          id: product._id,
+          type: product._type,
+          title: product.title,
+          slug: product.slug,
+          price: product.price,
+        })
+      );
+
+    console.log(
+      "Creating Paddle transaction for products:",
+      purchaseItems
     );
 
-    // Store all purchased Sanity products
-    // inside Paddle custom_data.
-    // We will use this later when building
-    // the Paddle webhook and download access.
-    const purchaseItems = products.map(
-      (product) => ({
-        id: product._id,
-        type: product._type,
-        title: product.title,
-        slug: product.slug,
-        price: product.price,
-      })
-    );
-
-    // Create Paddle transaction
     const response = await fetch(
       "https://sandbox-api.paddle.com/transactions",
       {
         method: "POST",
 
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${paddleApiKey}`,
+          "Content-Type":
+            "application/json",
+
+          Authorization:
+            `Bearer ${paddleApiKey}`,
         },
 
         body: JSON.stringify({
           items: paddleItems,
 
           custom_data: {
-            source: "adinkra_media",
+            source:
+              "adinkra_media",
 
-            products: purchaseItems,
+            products:
+              purchaseItems,
           },
         }),
       }
     );
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
-    // Paddle API error
     if (!response.ok) {
       console.error(
         "Paddle transaction error:",
@@ -226,29 +259,70 @@ export const handler = async (event) => {
       );
 
       return {
-        statusCode: response.status,
+        statusCode:
+          response.status,
+
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
         },
+
         body: JSON.stringify({
           error:
             "Paddle transaction failed",
+
           details: data,
         }),
       };
     }
 
-    // Return transaction ID
-    // and all products to frontend
+    const transactionId =
+      data?.data?.id;
+
+    if (!transactionId) {
+      console.error(
+        "Paddle returned no transaction ID:",
+        data
+      );
+
+      return {
+        statusCode: 500,
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          error:
+            "Paddle did not return a transaction ID",
+        }),
+      };
+    }
+
+    console.log(
+      "Paddle transaction created:",
+      transactionId
+    );
+
+    console.log(
+      "Products stored in Paddle custom_data:",
+      purchaseItems
+    );
+
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        transactionId: data.data.id,
 
-        products: purchaseItems,
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body: JSON.stringify({
+        transactionId,
+
+        products:
+          purchaseItems,
       }),
     };
   } catch (error) {
@@ -259,9 +333,12 @@ export const handler = async (event) => {
 
     return {
       statusCode: 500,
+
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
       },
+
       body: JSON.stringify({
         error:
           error.message ||

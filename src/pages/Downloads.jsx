@@ -13,6 +13,9 @@ const sanity = createClient({
   apiVersion: "2024-01-01",
 });
 
+const MAX_ATTEMPTS = 10;
+const RETRY_DELAY = 2000;
+
 export default function Downloads() {
   const [downloads, setDownloads] =
     useState([]);
@@ -27,17 +30,61 @@ export default function Downloads() {
     useSearchParams();
 
   const transactionId =
-    searchParams.get(
-      "transaction"
-    );
+    searchParams.get("transaction");
 
   useEffect(() => {
     let cancelled = false;
 
+    const wait = (ms) =>
+      new Promise((resolve) =>
+        setTimeout(resolve, ms)
+      );
+
+    const fetchPurchase = async () => {
+      const response =
+        await fetch(
+          `/.netlify/functions/get-paddle-purchase?transaction=${encodeURIComponent(
+            transactionId
+          )}`,
+          {
+            method: "GET",
+
+            cache: "no-store",
+
+            headers: {
+              Accept:
+                "application/json",
+            },
+          }
+        );
+
+      const responseText =
+        await response.text();
+
+      let data = {};
+
+      try {
+        data = responseText
+          ? JSON.parse(
+              responseText
+            )
+          : {};
+      } catch {
+        throw new Error(
+          "The purchase verification server returned an invalid response."
+        );
+      }
+
+      return {
+        response,
+        data,
+      };
+    };
+
     const fetchDownloads = async () => {
       /*
-       * No transaction ID means
-       * there is nothing to retrieve.
+       * Make sure we have a Paddle
+       * transaction ID.
        */
       if (!transactionId) {
         if (!cancelled) {
@@ -52,57 +99,101 @@ export default function Downloads() {
       }
 
       try {
-        setLoading(true);
-
-        setError(null);
+        if (!cancelled) {
+          setLoading(true);
+          setError(null);
+          setDownloads([]);
+        }
 
         /*
          * STEP 1
          *
-         * Verify that the transaction
-         * was recorded as completed.
+         * Wait for the Paddle webhook
+         * to record the completed transaction
+         * in Supabase.
+         *
+         * Paddle may redirect the customer
+         * before the webhook has finished.
          */
-        const purchaseResponse =
-          await fetch(
-            `/.netlify/functions/get-paddle-purchase?transaction=${encodeURIComponent(
-              transactionId
-            )}`,
-            {
-              method: "GET",
+        let purchaseData =
+          null;
 
-              cache: "no-store",
+        let lastError =
+          "Your payment could not be verified yet.";
+
+        for (
+          let attempt = 1;
+          attempt <= MAX_ATTEMPTS;
+          attempt++
+        ) {
+          if (cancelled) {
+            return;
+          }
+
+          try {
+            const {
+              response,
+              data,
+            } =
+              await fetchPurchase();
+
+            if (response.ok) {
+              purchaseData = data;
+
+              /*
+               * The transaction exists,
+               * so stop retrying.
+               */
+              break;
             }
-          );
 
-        const purchaseText =
-          await purchaseResponse.text();
+            lastError =
+              data.error ||
+              "Your payment could not be verified yet.";
 
-        let purchaseData = {};
+            console.log(
+              `Purchase verification attempt ${attempt}/${MAX_ATTEMPTS}:`,
+              lastError
+            );
+          } catch (verificationError) {
+            lastError =
+              verificationError.message ||
+              "Unable to verify your purchase.";
 
-        try {
-          purchaseData =
-            purchaseText
-              ? JSON.parse(
-                  purchaseText
-                )
-              : {};
-        } catch (parseError) {
-          throw new Error(
-            "The purchase verification server returned an invalid response."
-          );
+            console.error(
+              "Purchase verification error:",
+              verificationError
+            );
+          }
+
+          /*
+           * Give the Paddle webhook time
+           * to finish before trying again.
+           */
+          if (
+            attempt <
+            MAX_ATTEMPTS
+          ) {
+            await wait(
+              RETRY_DELAY
+            );
+          }
         }
 
-        if (
-          !purchaseResponse.ok
-        ) {
+        /*
+         * The transaction was never
+         * confirmed in Supabase.
+         */
+        if (!purchaseData) {
           throw new Error(
-            purchaseData.error ||
-              "Your payment could not be verified yet."
+            lastError
           );
         }
 
         /*
-         * Get products saved by
+         * STEP 2
+         *
+         * Get the products saved by
          * the Paddle webhook.
          */
         const purchasedProducts =
@@ -112,41 +203,48 @@ export default function Downloads() {
             ? purchaseData.products
             : [];
 
+        /*
+         * A completed transaction without
+         * products cannot generate downloads.
+         */
         if (
           purchasedProducts.length === 0
         ) {
           throw new Error(
-            "No purchased products were found for this transaction."
+            "Your payment was confirmed, but the purchased products were not recorded. Please contact Adinkra Media support with your transaction ID."
           );
         }
 
         /*
-         * Extract product slugs.
+         * STEP 3
+         *
+         * Extract valid Sanity slugs.
          */
         const purchasedSlugs =
           purchasedProducts
             .map(
               (product) =>
-                product.slug
+                typeof product?.slug ===
+                "string"
+                  ? product.slug.trim()
+                  : ""
             )
             .filter(
               (slug) =>
-                typeof slug ===
-                  "string" &&
-                slug.trim().length >
-                  0
+                slug.length > 0
             );
 
         if (
           purchasedSlugs.length === 0
         ) {
           throw new Error(
-            "No valid Sanity product slugs were found for this purchase."
+            "Your purchase was confirmed, but no valid product information was found."
           );
         }
 
         /*
-         * Remove duplicate slugs.
+         * Remove duplicate products
+         * while preserving purchase order.
          */
         const uniqueSlugs = [
           ...new Set(
@@ -154,13 +252,16 @@ export default function Downloads() {
           ),
         ];
 
+        console.log(
+          "Purchased product slugs:",
+          uniqueSlugs
+        );
+
         /*
-         * STEP 2
+         * STEP 4
          *
          * Retrieve the actual products
          * from Sanity.
-         *
-         * This replaces Contentful completely.
          */
         const sanityProducts =
           await sanity.fetch(
@@ -172,13 +273,9 @@ export default function Downloads() {
               _type,
               title,
               "slug": slug.current,
-
               price,
-
               fullDownloadFile,
-
               downloadUrl,
-
               totalFiles
             }`,
             {
@@ -188,7 +285,43 @@ export default function Downloads() {
           );
 
         /*
-         * Preserve the purchase order.
+         * Check whether every purchased
+         * product still exists in Sanity.
+         */
+        const foundSlugs =
+          sanityProducts.map(
+            (product) =>
+              product.slug
+          );
+
+        const missingSlugs =
+          uniqueSlugs.filter(
+            (slug) =>
+              !foundSlugs.includes(
+                slug
+              )
+          );
+
+        if (
+          missingSlugs.length > 0
+        ) {
+          console.error(
+            "Purchased products missing from Sanity:",
+            missingSlugs
+          );
+
+          throw new Error(
+            `Some purchased products could not be found: ${missingSlugs.join(
+              ", "
+            )}`
+          );
+        }
+
+        /*
+         * STEP 5
+         *
+         * Preserve the exact order
+         * in which the products were purchased.
          */
         const orderedDownloads =
           uniqueSlugs
@@ -201,6 +334,14 @@ export default function Downloads() {
                 )
             )
             .filter(Boolean);
+
+        if (
+          orderedDownloads.length === 0
+        ) {
+          throw new Error(
+            "No downloadable products were found for this purchase."
+          );
+        }
 
         if (!cancelled) {
           setDownloads(
@@ -238,10 +379,17 @@ export default function Downloads() {
    */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-adinkra-bg text-adinkra-gold">
-        <p className="text-xl">
-          Verifying your purchase...
-        </p>
+      <div className="min-h-screen flex items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
+        <div className="text-center">
+          <p className="text-xl">
+            Confirming your purchase...
+          </p>
+
+          <p className="mt-3 text-sm text-adinkra-gold/60">
+            Your payment is being verified.
+            Your downloads will appear shortly.
+          </p>
+        </div>
       </div>
     );
   }
@@ -252,7 +400,7 @@ export default function Downloads() {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
-        <h1 className="text-4xl font-bold mb-6 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
           Purchase Verification
         </h1>
 
@@ -260,14 +408,30 @@ export default function Downloads() {
           {error}
         </p>
 
-        <p className="mt-6 text-center text-adinkra-gold/60">
-          If you have just completed your payment,
-          please wait a moment and refresh this page.
+        <p className="mt-6 text-center text-adinkra-gold/60 max-w-2xl">
+          Transaction ID:
+          <br />
+          <span className="break-all">
+            {transactionId}
+          </span>
         </p>
+
+        <button
+          type="button"
+          onClick={() =>
+            window.location.reload()
+          }
+          className="mt-8 bg-adinkra-highlight text-adinkra-bg px-6 py-4 rounded-xl hover:opacity-90 transition text-lg font-medium shadow-md"
+        >
+          Check Again
+        </button>
       </div>
     );
   }
 
+  /*
+   * Successful purchase.
+   */
   return (
     <div className="min-h-screen flex flex-col items-center bg-adinkra-bg text-adinkra-gold px-6 py-12">
       <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
@@ -280,16 +444,18 @@ export default function Downloads() {
       </p>
 
       {downloads.length === 0 ? (
-        <p className="text-xl opacity-70 text-center">
-          No downloadable files were found
-          for this purchase.
-        </p>
+        <div className="text-center">
+          <p className="text-xl opacity-70">
+            No downloadable files were found
+            for this purchase.
+          </p>
+        </div>
       ) : (
         <div className="w-full max-w-4xl flex flex-col gap-8">
           {downloads.map(
             (item) => {
               /*
-               * Single audio track.
+               * SINGLE AUDIO TRACK
                */
               if (
                 item._type ===
@@ -304,7 +470,8 @@ export default function Downloads() {
                     : item.fullDownloadFile;
 
                 const downloadUrl =
-                  downloadFile?.asset?.url ||
+                  downloadFile?.asset
+                    ?.url ||
                   downloadFile?.url ||
                   null;
 
@@ -338,6 +505,8 @@ export default function Downloads() {
                       downloadUrl
                     }
                     download
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md"
                   >
                     Download:{" "}
@@ -348,7 +517,7 @@ export default function Downloads() {
               }
 
               /*
-               * Album / collection / pack.
+               * ALBUM / COLLECTION / PACK
                */
               if (
                 item._type ===
@@ -390,6 +559,8 @@ export default function Downloads() {
                       downloadUrl
                     }
                     download
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md flex flex-col items-center gap-2"
                   >
                     <span className="font-bold text-xl">
@@ -415,8 +586,11 @@ export default function Downloads() {
       )}
 
       <p className="mt-12 text-center text-adinkra-gold/70">
-        Your transaction ID:{" "}
-        {transactionId}
+        Your transaction ID:
+        <br />
+        <span className="break-all">
+          {transactionId}
+        </span>
       </p>
 
       <p className="mt-2 text-center text-adinkra-gold/50">

@@ -77,29 +77,6 @@ export const handler = async (event) => {
     }
 
     /*
-     * Get Supabase environment variables.
-     */
-    if (
-      !process.env.SUPABASE_URL ||
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
-    ) {
-      console.error(
-        "Supabase environment variables are missing."
-      );
-
-      return {
-        statusCode: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          error:
-            "Supabase environment variables are missing",
-        }),
-      };
-    }
-
-    /*
      * Get raw request body.
      *
      * Paddle signature verification requires
@@ -319,26 +296,18 @@ export const handler = async (event) => {
     }
 
     /*
-     * Customer email.
-     */
-    const customerEmail =
-      eventData?.customer?.email ||
-      eventData?.details?.customer?.email ||
-      null;
-
-    /*
      * Read custom data created by
      * create-paddle-transaction.js.
-     *
-     * The webhook may not always contain
-     * custom_data. We will therefore still
-     * record the transaction even if the
-     * products array is empty.
      */
     const customData =
       eventData.custom_data || {};
 
-    const purchasedProducts =
+    /*
+     * First try to use the exact product
+     * information attached to the transaction
+     * when the transaction was created.
+     */
+    let purchasedProducts =
       Array.isArray(
         customData.products
       )
@@ -346,23 +315,100 @@ export const handler = async (event) => {
         : [];
 
     /*
-     * Log product information.
+     * If custom_data.products is missing,
+     * build the product list from Paddle's
+     * transaction line items.
+     *
+     * This prevents completed purchases
+     * from being saved with an empty
+     * products array.
      */
     if (
       purchasedProducts.length === 0
     ) {
-      console.warn(
-        "No purchased products found in Paddle custom_data. The transaction will still be recorded.",
+      const lineItems =
+        Array.isArray(
+          eventData?.details?.line_items
+        )
+          ? eventData.details.line_items
+          : [];
+
+      purchasedProducts =
+        lineItems.map(
+          (item) => ({
+            paddle_product_id:
+              item?.product?.id ||
+              null,
+
+            paddle_price_id:
+              item?.price_id ||
+              null,
+
+            title:
+              item?.product?.name ||
+              item?.product?.description ||
+              item?.price?.description ||
+              "Purchased product",
+
+            quantity:
+              Number(
+                item?.quantity || 1
+              ),
+
+            price:
+              item?.unit_totals?.subtotal
+                ? Number(
+                    item.unit_totals.subtotal
+                  ) / 100
+                : null,
+
+            currency:
+              eventData?.currency_code ||
+              eventData?.details?.totals
+                ?.currency_code ||
+              null,
+          })
+        );
+    }
+
+    /*
+     * Log the final products that will
+     * be stored in Supabase.
+     */
+    console.log(
+      "Purchased products to save:",
+      JSON.stringify(
+        purchasedProducts,
+        null,
+        2
+      )
+    );
+
+    /*
+     * A completed transaction must have
+     * at least one product.
+     */
+    if (
+      purchasedProducts.length === 0
+    ) {
+      console.error(
+        "Completed transaction contains no products.",
         {
           transactionId,
-          customData,
         }
       );
-    } else {
-      console.log(
-        "Purchased products:",
-        purchasedProducts
-      );
+
+      return {
+        statusCode: 400,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          error:
+            "Completed transaction contains no products",
+          transactionId,
+        }),
+      };
     }
 
     console.log(
@@ -370,18 +416,16 @@ export const handler = async (event) => {
       transactionId
     );
 
-    console.log(
-      "Customer email:",
-      customerEmail
-    );
-
     /*
      * Save purchase to Supabase.
      *
+     * No customer email is collected
+     * or stored.
+     *
      * transaction_id is UNIQUE,
-     * so Paddle webhook retries will
-     * update the existing purchase
-     * instead of creating duplicates.
+     * so Paddle webhook retries update
+     * the existing purchase instead of
+     * creating duplicate records.
      */
     const { data: purchase, error } =
       await supabase
@@ -390,9 +434,6 @@ export const handler = async (event) => {
           {
             transaction_id:
               transactionId,
-
-            customer_email:
-              customerEmail,
 
             status:
               "completed",
@@ -455,9 +496,6 @@ export const handler = async (event) => {
 
     /*
      * Payment is now recorded.
-     *
-     * Downloads can later be granted
-     * using the verified transaction ID.
      */
     return {
       statusCode: 200,
