@@ -13,6 +13,110 @@ const sanity = createClient({
   apiVersion: "2024-01-01",
 });
 
+/*
+ * Safely extract a URL from a Sanity file/image field.
+ *
+ * Supports:
+ * - Direct URL strings
+ * - Sanity asset objects with url
+ * - Sanity file references
+ * - Arrays containing a file
+ */
+const getSanityFileUrl = (
+  file
+) => {
+  if (!file) {
+    return null;
+  }
+
+  /*
+   * Direct URL
+   */
+  if (
+    typeof file === "string" &&
+    file.trim()
+  ) {
+    return file.trim();
+  }
+
+  /*
+   * Direct asset URL
+   */
+  if (
+    typeof file?.asset?.url ===
+      "string" &&
+    file.asset.url.trim()
+  ) {
+    return file.asset.url.trim();
+  }
+
+  /*
+   * Direct URL property
+   */
+  if (
+    typeof file?.url ===
+      "string" &&
+    file.url.trim()
+  ) {
+    return file.url.trim();
+  }
+
+  /*
+   * Sanity asset reference.
+   *
+   * This is not directly downloadable
+   * without resolving it through Sanity.
+   */
+  if (
+    typeof file?.asset?._ref ===
+    "string"
+  ) {
+    console.warn(
+      "[Downloads Debug] File contains a Sanity asset reference but no resolved URL:",
+      file.asset._ref
+    );
+  }
+
+  return null;
+};
+
+/*
+ * Extract the first valid file URL
+ * from a possible Sanity file field.
+ */
+const resolveFileUrl = (
+ file
+) => {
+  /*
+   * Array of files
+   */
+  if (
+    Array.isArray(file)
+  ) {
+    for (
+      const entry of file
+    ) {
+      const url =
+        getSanityFileUrl(
+          entry
+        );
+
+      if (url) {
+        return url;
+      }
+    }
+
+    return null;
+  }
+
+  /*
+   * Single file
+   */
+  return getSanityFileUrl(
+    file
+  );
+};
+
 export default function Downloads() {
   const [
     downloads,
@@ -34,10 +138,14 @@ export default function Downloads() {
   ] = useSearchParams();
 
   const transactionId =
-    searchParams.get("transaction");
+    searchParams.get(
+      "transaction"
+    );
 
   const productSlugsParam =
-    searchParams.get("products");
+    searchParams.get(
+      "products"
+    );
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +153,10 @@ export default function Downloads() {
     const loadDownloads =
       async () => {
         try {
+          console.group(
+            "[Downloads Debug] ===== STARTING DOWNLOAD PREPARATION ====="
+          );
+
           if (!cancelled) {
             setLoading(true);
             setError(null);
@@ -53,9 +165,24 @@ export default function Downloads() {
 
           /*
            * --------------------------------------------------
-           * VALIDATE TRANSACTION
+           * TRANSACTION ID
            * --------------------------------------------------
            */
+
+          console.log(
+            "[Downloads Debug] Full URL:",
+            window.location.href
+          );
+
+          console.log(
+            "[Downloads Debug] Transaction parameter:",
+            transactionId
+          );
+
+          console.log(
+            "[Downloads Debug] Products parameter:",
+            productSlugsParam
+          );
 
           if (
             typeof transactionId !==
@@ -72,7 +199,7 @@ export default function Downloads() {
 
           /*
            * --------------------------------------------------
-           * VALIDATE PRODUCTS
+           * PRODUCT SLUGS
            * --------------------------------------------------
            */
 
@@ -86,9 +213,33 @@ export default function Downloads() {
             );
           }
 
+          /*
+           * Decode the parameter in case
+           * the URL contains encoded values.
+           */
+          let decodedProducts =
+            productSlugsParam;
+
+          try {
+            decodedProducts =
+              decodeURIComponent(
+                productSlugsParam
+              );
+          } catch (
+            decodeError
+          ) {
+            console.warn(
+              "[Downloads Debug] Could not decode products parameter. Using raw value.",
+              decodeError
+            );
+          }
+
+          /*
+           * Split comma-separated slugs.
+           */
           const purchasedSlugs = [
             ...new Set(
-              productSlugsParam
+              decodedProducts
                 .split(",")
                 .map(
                   (slug) =>
@@ -97,6 +248,16 @@ export default function Downloads() {
                 .filter(Boolean)
             ),
           ];
+
+          console.log(
+            "[Downloads Debug] Decoded product parameter:",
+            decodedProducts
+          );
+
+          console.log(
+            "[Downloads Debug] Purchased product slugs:",
+            purchasedSlugs
+          );
 
           if (
             purchasedSlugs.length ===
@@ -107,32 +268,15 @@ export default function Downloads() {
             );
           }
 
-          console.log(
-            "[Downloads Debug] Preparing downloads for transaction:",
-            cleanTransactionId
-          );
-
-          console.log(
-            "[Downloads Debug] Purchased product slugs:",
-            purchasedSlugs
-          );
-
           /*
            * --------------------------------------------------
-           * FETCH PRODUCTS FROM SANITY
+           * SANITY QUERY
            * --------------------------------------------------
-           *
-           * IMPORTANT:
-           *
-           * We resolve the Sanity file asset directly
-           * inside GROQ using:
-           *
-           * fullDownloadFile.asset->url
-           *
-           * This means the browser receives the actual
-           * downloadable URL instead of only the Sanity
-           * asset reference.
            */
+
+          console.log(
+            "[Downloads Debug] Fetching purchased products from Sanity..."
+          );
 
           const sanityProducts =
             await sanity.fetch(
@@ -143,20 +287,30 @@ export default function Downloads() {
                 _id,
                 _type,
                 title,
+
                 "slug": slug.current,
+
                 price,
-
-                "fullDownloadFileUrl":
-                  fullDownloadFile.asset->url,
-
-                "fullDownloadFileName":
-                  fullDownloadFile.asset->originalFilename,
 
                 fullDownloadFile,
 
                 downloadUrl,
 
-                totalFiles
+                totalFiles,
+
+                /*
+                 * Resolve the Sanity asset URL
+                 * directly where possible.
+                 */
+                "fullDownloadFileUrl":
+                  fullDownloadFile.asset->url,
+
+                /*
+                 * Keep asset reference
+                 * for debugging.
+                 */
+                "fullDownloadFileRef":
+                  fullDownloadFile.asset._ref
               }`,
               {
                 slugs:
@@ -165,13 +319,66 @@ export default function Downloads() {
             );
 
           console.log(
-            "[Downloads Debug] Sanity products returned:",
+            "[Downloads Debug] Sanity returned products:",
             sanityProducts
           );
 
           /*
+           * Log each product individually.
+           */
+          sanityProducts?.forEach(
+            (product) => {
+              console.group(
+                `[Downloads Debug] Product: ${product.title}`
+              );
+
+              console.log(
+                "ID:",
+                product._id
+              );
+
+              console.log(
+                "Type:",
+                product._type
+              );
+
+              console.log(
+                "Slug:",
+                product.slug
+              );
+
+              console.log(
+                "fullDownloadFile:",
+                product.fullDownloadFile
+              );
+
+              console.log(
+                "fullDownloadFileUrl:",
+                product.fullDownloadFileUrl
+              );
+
+              console.log(
+                "fullDownloadFileRef:",
+                product.fullDownloadFileRef
+              );
+
+              console.log(
+                "downloadUrl:",
+                product.downloadUrl
+              );
+
+              console.log(
+                "totalFiles:",
+                product.totalFiles
+              );
+
+              console.groupEnd();
+            }
+          );
+
+          /*
            * --------------------------------------------------
-           * VALIDATE SANITY PRODUCTS
+           * VALIDATE SANITY RESULTS
            * --------------------------------------------------
            */
 
@@ -188,57 +395,9 @@ export default function Downloads() {
           }
 
           /*
-           * --------------------------------------------------
-           * DEBUG PRODUCT DATA
-           * --------------------------------------------------
+           * Check whether every purchased
+           * slug exists in Sanity.
            */
-
-          sanityProducts.forEach(
-            (product) => {
-              console.group(
-                `[Downloads Debug] ${product.title}`
-              );
-
-              console.log(
-                "Type:",
-                product._type
-              );
-
-              console.log(
-                "Slug:",
-                product.slug
-              );
-
-              console.log(
-                "Raw fullDownloadFile:",
-                product.fullDownloadFile
-              );
-
-              console.log(
-                "Resolved file URL:",
-                product.fullDownloadFileUrl
-              );
-
-              console.log(
-                "Resolved filename:",
-                product.fullDownloadFileName
-              );
-
-              console.log(
-                "Album download URL:",
-                product.downloadUrl
-              );
-
-              console.groupEnd();
-            }
-          );
-
-          /*
-           * --------------------------------------------------
-           * CHECK FOR MISSING PRODUCTS
-           * --------------------------------------------------
-           */
-
           const missingSlugs =
             purchasedSlugs.filter(
               (slug) =>
@@ -253,7 +412,7 @@ export default function Downloads() {
             missingSlugs.length > 0
           ) {
             console.error(
-              "[Downloads Debug] Missing products:",
+              "[Downloads Debug] Purchased products missing from Sanity:",
               missingSlugs
             );
 
@@ -291,14 +450,142 @@ export default function Downloads() {
             );
           }
 
+          /*
+           * --------------------------------------------------
+           * RESOLVE DOWNLOAD URLS
+           * --------------------------------------------------
+           */
+
+          const preparedDownloads =
+            orderedDownloads.map(
+              (product) => {
+                let downloadUrl =
+                  null;
+
+                /*
+                 * AUDIO TRACK
+                 */
+                if (
+                  product._type ===
+                  "audioTrack"
+                ) {
+                  /*
+                   * First use the URL
+                   * explicitly resolved by Sanity.
+                   */
+                  if (
+                    typeof product.fullDownloadFileUrl ===
+                      "string" &&
+                    product.fullDownloadFileUrl.trim()
+                  ) {
+                    downloadUrl =
+                      product.fullDownloadFileUrl.trim();
+                  }
+
+                  /*
+                   * Otherwise inspect
+                   * the original field.
+                   */
+                  if (
+                    !downloadUrl
+                  ) {
+                    downloadUrl =
+                      resolveFileUrl(
+                        product.fullDownloadFile
+                      );
+                  }
+                }
+
+                /*
+                 * ALBUM / PACK
+                 */
+                if (
+                  product._type ===
+                  "album"
+                ) {
+                  /*
+                   * Album downloadUrl
+                   * is normally already a
+                   * direct URL.
+                   */
+                  if (
+                    typeof product.downloadUrl ===
+                      "string" &&
+                    product.downloadUrl.trim()
+                  ) {
+                    downloadUrl =
+                      product.downloadUrl.trim();
+                  }
+
+                  /*
+                   * Fallback in case the
+                   * album also uses a Sanity
+                   * file field.
+                   */
+                  if (
+                    !downloadUrl
+                  ) {
+                    downloadUrl =
+                      resolveFileUrl(
+                        product.fullDownloadFile
+                      );
+                  }
+
+                  /*
+                   * Fallback to resolved
+                   * Sanity asset URL.
+                   */
+                  if (
+                    !downloadUrl &&
+                    typeof product.fullDownloadFileUrl ===
+                      "string" &&
+                    product.fullDownloadFileUrl.trim()
+                  ) {
+                    downloadUrl =
+                      product.fullDownloadFileUrl.trim();
+                  }
+                }
+
+                console.log(
+                  "[Downloads Debug] Resolved download:",
+                  {
+                    title:
+                      product.title,
+
+                    type:
+                      product._type,
+
+                    slug:
+                      product.slug,
+
+                    downloadUrl,
+                  }
+                );
+
+                return {
+                  ...product,
+
+                  resolvedDownloadUrl:
+                    downloadUrl,
+                };
+              }
+            );
+
           console.log(
-            "[Downloads Debug] Downloads ready:",
-            orderedDownloads
+            "[Downloads Debug] Final prepared downloads:",
+            preparedDownloads
           );
+
+          console.log(
+            "[Downloads Debug] Transaction:",
+            cleanTransactionId
+          );
+
+          console.groupEnd();
 
           if (!cancelled) {
             setDownloads(
-              orderedDownloads
+              preparedDownloads
             );
           }
         } catch (err) {
@@ -307,9 +594,11 @@ export default function Downloads() {
             err
           );
 
+          console.groupEnd();
+
           if (!cancelled) {
             setError(
-              err.message ||
+              err?.message ||
                 "Unable to load your downloads."
             );
           }
@@ -332,7 +621,7 @@ export default function Downloads() {
 
   /*
    * --------------------------------------------------
-   * LOADING
+   * LOADING STATE
    * --------------------------------------------------
    */
 
@@ -340,7 +629,6 @@ export default function Downloads() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
         <div className="text-center">
-
           <p className="text-xl">
             Preparing your downloads...
           </p>
@@ -348,7 +636,6 @@ export default function Downloads() {
           <p className="mt-3 text-sm text-adinkra-gold/60">
             Loading your purchased files.
           </p>
-
         </div>
       </div>
     );
@@ -356,14 +643,13 @@ export default function Downloads() {
 
   /*
    * --------------------------------------------------
-   * ERROR
+   * ERROR STATE
    * --------------------------------------------------
    */
 
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
-
         <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
           Downloads
         </h1>
@@ -374,7 +660,6 @@ export default function Downloads() {
 
         {transactionId && (
           <p className="mt-6 text-center text-adinkra-gold/60 max-w-2xl">
-
             Transaction ID:
 
             <br />
@@ -382,7 +667,18 @@ export default function Downloads() {
             <span className="break-all">
               {transactionId}
             </span>
+          </p>
+        )}
 
+        {productSlugsParam && (
+          <p className="mt-4 text-center text-adinkra-gold/50 max-w-2xl text-sm">
+            Products:
+
+            <br />
+
+            <span className="break-all">
+              {productSlugsParam}
+            </span>
           </p>
         )}
 
@@ -395,20 +691,18 @@ export default function Downloads() {
         >
           Try Again
         </button>
-
       </div>
     );
   }
 
   /*
    * --------------------------------------------------
-   * SUCCESS
+   * SUCCESSFUL PURCHASE
    * --------------------------------------------------
    */
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-adinkra-bg text-adinkra-gold px-6 py-12">
-
       <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
         Thank You for Your Purchase!
       </h1>
@@ -419,44 +713,24 @@ export default function Downloads() {
       </p>
 
       <div className="w-full max-w-4xl flex flex-col gap-8">
-
         {downloads.map(
           (item) => {
+            const downloadUrl =
+              item.resolvedDownloadUrl;
 
             /*
-             * ------------------------------------------------
+             * ------------------------------------------
              * AUDIO TRACK
-             * ------------------------------------------------
+             * ------------------------------------------
              */
 
             if (
               item._type ===
               "audioTrack"
             ) {
-              const downloadUrl =
-                typeof item.fullDownloadFileUrl ===
-                "string"
-                  ? item.fullDownloadFileUrl.trim()
-                  : "";
-
-              console.log(
-                "[Downloads Debug] Audio download:",
-                {
-                  title:
-                    item.title,
-
-                  slug:
-                    item.slug,
-
-                  url:
-                    downloadUrl,
-
-                  filename:
-                    item.fullDownloadFileName,
-                }
-              );
-
-              if (!downloadUrl) {
+              if (
+                !downloadUrl
+              ) {
                 return (
                   <div
                     key={
@@ -464,7 +738,6 @@ export default function Downloads() {
                     }
                     className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
                   >
-
                     <p className="font-bold text-xl">
                       {item.title ||
                         "Untitled Track"}
@@ -474,6 +747,11 @@ export default function Downloads() {
                       Download file is currently unavailable.
                     </p>
 
+                    <p className="text-xs opacity-50 mt-2">
+                      The purchase was successful,
+                      but the download file could not
+                      be resolved.
+                    </p>
                   </div>
                 );
               }
@@ -486,10 +764,7 @@ export default function Downloads() {
                   href={
                     downloadUrl
                   }
-                  download={
-                    item.fullDownloadFileName ||
-                    true
-                  }
+                  download
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md"
@@ -502,39 +777,18 @@ export default function Downloads() {
             }
 
             /*
-             * ------------------------------------------------
+             * ------------------------------------------
              * ALBUM / PACK
-             * ------------------------------------------------
+             * ------------------------------------------
              */
 
             if (
               item._type ===
               "album"
             ) {
-              const downloadUrl =
-                typeof item.downloadUrl ===
-                "string"
-                  ? item.downloadUrl.trim()
-                  : "";
-
-              console.log(
-                "[Downloads Debug] Album download:",
-                {
-                  title:
-                    item.title,
-
-                  slug:
-                    item.slug,
-
-                  url:
-                    downloadUrl,
-
-                  totalFiles:
-                    item.totalFiles,
-                }
-              );
-
-              if (!downloadUrl) {
+              if (
+                !downloadUrl
+              ) {
                 return (
                   <div
                     key={
@@ -542,7 +796,6 @@ export default function Downloads() {
                     }
                     className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
                   >
-
                     <p className="font-bold text-xl">
                       {item.title ||
                         "Untitled Pack"}
@@ -552,6 +805,11 @@ export default function Downloads() {
                       Download file is currently unavailable.
                     </p>
 
+                    <p className="text-xs opacity-50 mt-2">
+                      The purchase was successful,
+                      but the download file could not
+                      be resolved.
+                    </p>
                   </div>
                 );
               }
@@ -569,7 +827,6 @@ export default function Downloads() {
                   rel="noopener noreferrer"
                   className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md flex flex-col items-center gap-2"
                 >
-
                   <span className="font-bold text-xl">
                     Download Pack:{" "}
                     {item.title ||
@@ -582,31 +839,17 @@ export default function Downloads() {
                       "?"}{" "}
                     files)
                   </span>
-
                 </a>
               );
             }
 
-            /*
-             * ------------------------------------------------
-             * UNKNOWN TYPE
-             * ------------------------------------------------
-             */
-
-            console.warn(
-              "[Downloads Debug] Unknown product type:",
-              item
-            );
-
             return null;
           }
         )}
-
       </div>
 
       {transactionId && (
         <p className="mt-12 text-center text-adinkra-gold/70">
-
           Your transaction ID:
 
           <br />
@@ -614,14 +857,12 @@ export default function Downloads() {
           <span className="break-all">
             {transactionId}
           </span>
-
         </p>
       )}
 
       <p className="mt-2 text-center text-adinkra-gold/50">
         Questions? Contact Adinkra Media support.
       </p>
-
     </div>
   );
 }
