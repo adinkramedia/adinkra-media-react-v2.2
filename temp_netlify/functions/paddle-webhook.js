@@ -19,11 +19,9 @@ export const handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify({
         error: "Method not allowed",
       }),
@@ -45,11 +43,9 @@ export const handler = async (event) => {
 
       return {
         statusCode: 400,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "Missing Paddle webhook signature",
@@ -70,11 +66,9 @@ export const handler = async (event) => {
 
       return {
         statusCode: 500,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "PADDLE_WEBHOOK_SECRET is missing",
@@ -95,11 +89,9 @@ export const handler = async (event) => {
 
       return {
         statusCode: 500,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "Supabase environment variables are missing",
@@ -164,11 +156,9 @@ export const handler = async (event) => {
 
       return {
         statusCode: 400,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "Invalid Paddle webhook signature",
@@ -223,11 +213,9 @@ export const handler = async (event) => {
 
       return {
         statusCode: 401,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "Invalid webhook signature",
@@ -247,11 +235,9 @@ export const handler = async (event) => {
 
       return {
         statusCode: 401,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "Invalid webhook signature",
@@ -284,8 +270,7 @@ export const handler = async (event) => {
       payload.data || {};
 
     /*
-     * We only grant download access
-     * for completed transactions.
+     * We only record completed transactions.
      */
     if (
       eventType !==
@@ -298,17 +283,13 @@ export const handler = async (event) => {
 
       return {
         statusCode: 200,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           success: true,
-
           message:
             "Webhook received.",
-
           eventType,
         }),
       };
@@ -327,11 +308,9 @@ export const handler = async (event) => {
 
       return {
         statusCode: 400,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "Missing transaction ID",
@@ -350,15 +329,15 @@ export const handler = async (event) => {
     /*
      * Read custom data created by
      * create-paddle-transaction.js.
+     *
+     * The webhook may not always contain
+     * custom_data. We will therefore still
+     * record the transaction even if the
+     * products array is empty.
      */
     const customData =
       eventData.custom_data || {};
 
-    /*
-     * These are the Sanity products that
-     * were stored when the transaction
-     * was created.
-     */
     const purchasedProducts =
       Array.isArray(
         customData.products
@@ -367,32 +346,23 @@ export const handler = async (event) => {
         : [];
 
     /*
-     * Safety check.
+     * Log product information.
      */
     if (
       purchasedProducts.length === 0
     ) {
-      console.error(
-        "No purchased products found in Paddle custom_data.",
+      console.warn(
+        "No purchased products found in Paddle custom_data. The transaction will still be recorded.",
         {
           transactionId,
           customData,
         }
       );
-
-      return {
-        statusCode: 400,
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          error:
-            "No purchased products found",
-          transactionId,
-        }),
-      };
+    } else {
+      console.log(
+        "Purchased products:",
+        purchasedProducts
+      );
     }
 
     console.log(
@@ -405,18 +375,13 @@ export const handler = async (event) => {
       customerEmail
     );
 
-    console.log(
-      "Purchased products:",
-      purchasedProducts
-    );
-
     /*
      * Save purchase to Supabase.
      *
      * transaction_id is UNIQUE,
      * so Paddle webhook retries will
-     * update the existing purchase instead
-     * of creating duplicate records.
+     * update the existing purchase
+     * instead of creating duplicates.
      */
     const { data: purchase, error } =
       await supabase
@@ -446,6 +411,9 @@ export const handler = async (event) => {
         .select()
         .single();
 
+    /*
+     * Supabase write failed.
+     */
     if (error) {
       console.error(
         "Failed to save Paddle purchase to Supabase:",
@@ -454,36 +422,48 @@ export const handler = async (event) => {
 
       return {
         statusCode: 500,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           error:
             "Failed to save purchase",
+
+          details:
+            error.message ||
+            "Unknown Supabase error",
         }),
       };
     }
 
+    /*
+     * Supabase write succeeded.
+     */
     console.log(
       "Paddle purchase saved successfully:",
       purchase.id
     );
 
+    console.log(
+      "Saved purchase record:",
+      JSON.stringify(
+        purchase,
+        null,
+        2
+      )
+    );
+
     /*
      * Payment is now recorded.
      *
-     * Downloads can now be granted
-     * using the transaction ID.
+     * Downloads can later be granted
+     * using the verified transaction ID.
      */
     return {
       statusCode: 200,
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify({
         success: true,
 
@@ -494,6 +474,9 @@ export const handler = async (event) => {
 
         purchaseId:
           purchase.id,
+
+        productsRecorded:
+          purchasedProducts.length,
       }),
     };
   } catch (error) {
@@ -504,11 +487,9 @@ export const handler = async (event) => {
 
     return {
       statusCode: 500,
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify({
         error:
           error.message ||
