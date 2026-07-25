@@ -62,8 +62,6 @@ export default function Downloads() {
           );
         }
 
-        const cleanTransactionId = transactionId.trim();
-
         // ---------------------------------------------------------
         // VALIDATE PRODUCT SLUGS
         // ---------------------------------------------------------
@@ -110,6 +108,9 @@ export default function Downloads() {
           "[Downloads Debug] Fetching purchased products from Sanity..."
         );
 
+        // ✅ Correct field names from your schema:
+        // audioTrack → fullDownload (file)
+        // album      → downloadUrls (array of urls)
         const query = `
           *[
             (_type == "audioTrack" || _type == "album") &&
@@ -120,11 +121,11 @@ export default function Downloads() {
             title,
             "slug": slug.current,
             price,
-            fullDownloadFile,
-            downloadUrl,
+            fullDownload,
+            downloadUrls,
             totalFiles,
-            "fullDownloadFileUrl": fullDownloadFile.asset->url,
-            "fullDownloadFileRef": fullDownloadFile.asset._ref
+            "fullDownloadUrl": fullDownload.asset->url,
+            "fullDownloadRef": fullDownload.asset._ref
           }
         `;
 
@@ -212,40 +213,13 @@ export default function Downloads() {
             `[Downloads Debug] Product: ${item.title}`
           );
 
-          console.log(
-            "Type:",
-            item._type
-          );
-
-          console.log(
-            "Slug:",
-            item.slug
-          );
-
-          console.log(
-            "Full download file:",
-            item.fullDownloadFile
-          );
-
-          console.log(
-            "Resolved full download URL:",
-            item.fullDownloadFileUrl
-          );
-
-          console.log(
-            "Download URL:",
-            item.downloadUrl
-          );
-
-          console.log(
-            "Asset reference:",
-            item.fullDownloadFileRef
-          );
-
-          console.log(
-            "Total files:",
-            item.totalFiles
-          );
+          console.log("Type:", item._type);
+          console.log("Slug:", item.slug);
+          console.log("Full download (file):", item.fullDownload);
+          console.log("Resolved full download URL:", item.fullDownloadUrl);
+          console.log("Download URLs (album):", item.downloadUrls);
+          console.log("Asset reference:", item.fullDownloadRef);
+          console.log("Total files:", item.totalFiles);
 
           console.groupEnd();
         });
@@ -379,12 +353,16 @@ export default function Downloads() {
           // =====================================================
 
           if (item._type === "audioTrack") {
-            const resolvedDownloadUrl =
-              item.fullDownloadFileUrl ||
-              item.fullDownloadFile?.asset?.url ||
-              item.fullDownloadFile?.url ||
-              item.downloadUrl ||
+            // Prefer the resolved URL from GROQ, fall back to nested asset
+            let resolvedDownloadUrl =
+              item.fullDownloadUrl ||
+              item.fullDownload?.asset?.url ||
               null;
+
+            // Sanity files are cross-origin → force download with ?dl
+            if (resolvedDownloadUrl) {
+              resolvedDownloadUrl = `${resolvedDownloadUrl}?dl`;
+            }
 
             console.log(
               "[Downloads Debug] Rendering audio track:",
@@ -403,8 +381,7 @@ export default function Downloads() {
                   className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
                 >
                   <p className="font-bold text-xl">
-                    {item.title ||
-                      "Untitled Track"}
+                    {item.title || "Untitled Track"}
                   </p>
 
                   <p className="text-sm opacity-70 mt-2">
@@ -423,14 +400,11 @@ export default function Downloads() {
               <a
                 key={item._id}
                 href={resolvedDownloadUrl}
-                download
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md"
               >
-                Download:{" "}
-                {item.title ||
-                  "Untitled Track"}
+                Download: {item.title || "Untitled Track"}
               </a>
             );
           }
@@ -440,11 +414,16 @@ export default function Downloads() {
           // =====================================================
 
           if (item._type === "album") {
-            const resolvedDownloadUrl =
-              typeof item.downloadUrl ===
-              "string"
-                ? item.downloadUrl.trim()
-                : "";
+            // downloadUrls is an array of strings in your schema
+            let resolvedDownloadUrl = "";
+
+            if (
+              Array.isArray(item.downloadUrls) &&
+              item.downloadUrls.length > 0
+            ) {
+              // Take the first URL (you can change this later if you want multiple buttons)
+              resolvedDownloadUrl = String(item.downloadUrls[0]).trim();
+            }
 
             console.log(
               "[Downloads Debug] Rendering album:",
@@ -463,8 +442,7 @@ export default function Downloads() {
                   className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
                 >
                   <p className="font-bold text-xl">
-                    {item.title ||
-                      "Untitled Pack"}
+                    {item.title || "Untitled Pack"}
                   </p>
 
                   <p className="text-sm opacity-70 mt-2">
@@ -483,22 +461,16 @@ export default function Downloads() {
               <a
                 key={item._id}
                 href={resolvedDownloadUrl}
-                download
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md flex flex-col items-center gap-2"
               >
                 <span className="font-bold text-xl">
-                  Download Pack:{" "}
-                  {item.title ||
-                    "Untitled Pack"}
+                  Download Pack: {item.title || "Untitled Pack"}
                 </span>
 
                 <span className="text-sm opacity-90">
-                  (
-                  {item.totalFiles ||
-                    "?"}{" "}
-                  files)
+                  ({item.totalFiles || "?"} files)
                 </span>
               </a>
             );
