@@ -16,49 +16,22 @@ export default function CartDrawer({
     total,
   } = useCart();
 
-  /*
-   * Handle successful Paddle payment.
-   *
-   * PaddleButton should return:
-   *
-   * {
-   *   transactionId,
-   *   products
-   * }
-   *
-   * The transaction ID is the only value
-   * that needs to be passed to Downloads.
-   *
-   * Downloads will then:
-   *
-   * 1. Receive the transaction ID.
-   * 2. Ask get-paddle-purchase to verify it.
-   * 3. get-paddle-purchase checks Supabase.
-   * 4. Supabase only returns completed purchases.
-   * 5. Downloads retrieves the purchased
-   *    products from Sanity.
-   */
   const handleSuccess = (purchaseData) => {
     console.log(
       "Paddle payment completed:",
       purchaseData
     );
 
-    /*
-     * Get the Paddle transaction ID.
-     */
     const transactionId =
       purchaseData?.transactionId;
 
-    /*
-     * A transaction ID is required.
-     *
-     * Do not fall back to product slugs.
-     *
-     * The Downloads page is now secured by
-     * the completed transaction stored in
-     * Supabase.
-     */
+    const products =
+      Array.isArray(
+        purchaseData?.products
+      )
+        ? purchaseData.products
+        : [];
+
     if (
       typeof transactionId !== "string" ||
       transactionId.trim().length === 0
@@ -69,48 +42,80 @@ export default function CartDrawer({
       );
 
       alert(
-        "Your payment was completed, but we could not retrieve your transaction ID. Please contact support before closing this page."
+        "Your payment was completed, but we could not retrieve your transaction ID. Please contact support."
       );
 
       return;
     }
 
-    /*
-     * Clear the cart after successful payment.
-     */
+    if (
+      products.length === 0
+    ) {
+      console.error(
+        "Payment completed, but no purchased products were returned.",
+        purchaseData
+      );
+
+      alert(
+        "Your payment was completed, but we could not identify your purchased products. Please contact support."
+      );
+
+      return;
+    }
+
+    const purchasedSlugs = [
+      ...new Set(
+        products
+          .map(
+            (product) =>
+              typeof product?.slug ===
+              "string"
+                ? product.slug.trim()
+                : ""
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+    if (
+      purchasedSlugs.length === 0
+    ) {
+      console.error(
+        "Payment completed, but no valid product slugs were returned.",
+        products
+      );
+
+      alert(
+        "Your payment was completed, but we could not identify your purchased products. Please contact support."
+      );
+
+      return;
+    }
+
+    console.log(
+      "Purchased slugs:",
+      purchasedSlugs
+    );
+
     clearCart();
 
-    /*
-     * Close the cart drawer.
-     */
     onClose();
 
-    /*
-     * Allow the parent component to handle
-     * the completed purchase if provided.
-     *
-     * Pass the transaction ID rather than
-     * product slugs.
-     */
     if (onPurchaseComplete) {
-      onPurchaseComplete(
-        transactionId
-      );
+      onPurchaseComplete({
+        transactionId,
+        products,
+        slugs: purchasedSlugs,
+      });
 
       return;
     }
 
-    /*
-     * Redirect to Downloads using only
-     * the Paddle transaction ID.
-     *
-     * Downloads.jsx will verify this transaction
-     * through get-paddle-purchase before showing
-     * any files.
-     */
     navigate(
       `/downloads?transaction=${encodeURIComponent(
         transactionId
+      )}&slugs=${encodeURIComponent(
+        purchasedSlugs.join(",")
       )}`
     );
   };
@@ -125,7 +130,6 @@ export default function CartDrawer({
     >
       <div className="p-6 h-full flex flex-col">
 
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">
             Your Licenses
@@ -141,7 +145,6 @@ export default function CartDrawer({
           </button>
         </div>
 
-        {/* Cart Items */}
         <div className="flex-1 overflow-y-auto">
 
           {cartItems.length === 0 && (
@@ -160,7 +163,7 @@ export default function CartDrawer({
               </p>
 
               <p className="text-sm mt-1">
-                {item.price === 0
+                {Number(item.price) === 0
                   ? "Free"
                   : `$${Number(
                       item.price
@@ -183,7 +186,6 @@ export default function CartDrawer({
 
         </div>
 
-        {/* Total + Checkout */}
         <div className="pt-6 border-t border-adinkra-highlight/20">
 
           <p className="text-xl font-bold mb-4">
@@ -193,12 +195,10 @@ export default function CartDrawer({
 
           {cartItems.length > 0 && (
             <div className="mt-6">
-
               <PaddleButton
                 cartItems={cartItems}
                 onSuccess={handleSuccess}
               />
-
             </div>
           )}
 
