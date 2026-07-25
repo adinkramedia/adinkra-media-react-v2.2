@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 
 export default function PaddleButton({
   cartItems = [],
-  onSuccess,
 }) {
   const navigate = useNavigate();
 
@@ -32,24 +31,15 @@ export default function PaddleButton({
           return;
         }
 
-        /*
-         * Paddle SDK is already available.
-         */
         if (window.Paddle) {
           console.log(
             "Paddle SDK already loaded."
           );
 
-          /*
-           * Configure Sandbox.
-           */
           window.Paddle.Environment.set(
             "sandbox"
           );
 
-          /*
-           * Initialize Paddle only once.
-           */
           if (
             !window.__ADINKRA_PADDLE_INITIALIZED__
           ) {
@@ -73,18 +63,11 @@ export default function PaddleButton({
           return;
         }
 
-        /*
-         * Check if the Paddle script is
-         * already being loaded.
-         */
         let script =
           document.getElementById(
             "paddle-sdk"
           );
 
-        /*
-         * Create Paddle SDK script.
-         */
         if (!script) {
           script =
             document.createElement(
@@ -103,9 +86,6 @@ export default function PaddleButton({
           );
         }
 
-        /*
-         * Wait for Paddle SDK to load.
-         */
         await new Promise(
           (resolve, reject) => {
             if (window.Paddle) {
@@ -145,16 +125,10 @@ export default function PaddleButton({
           "Paddle SDK loaded."
         );
 
-        /*
-         * Configure Paddle Sandbox.
-         */
         window.Paddle.Environment.set(
           "sandbox"
         );
 
-        /*
-         * Initialize Paddle only once.
-         */
         if (
           !window.__ADINKRA_PADDLE_INITIALIZED__
         ) {
@@ -189,94 +163,129 @@ export default function PaddleButton({
     };
   }, [clientToken]);
 
-  /*
-   * Handle Paddle checkout events.
-   */
+  const redirectToDownloads = (
+    transactionId
+  ) => {
+    if (
+      typeof transactionId !==
+        "string" ||
+      transactionId.trim().length ===
+        0
+    ) {
+      console.error(
+        "Cannot redirect to Downloads. Missing transaction ID:",
+        transactionId
+      );
+
+      setLoading(false);
+
+      alert(
+        "Your payment was completed, but the Paddle transaction ID could not be found. Please contact support."
+      );
+
+      return;
+    }
+
+    const cleanTransactionId =
+      transactionId.trim();
+
+    const downloadPath =
+      `/downloads?transaction=${encodeURIComponent(
+        cleanTransactionId
+      )}`;
+
+    console.log(
+      "Payment completed successfully."
+    );
+
+    console.log(
+      "Transaction ID:",
+      cleanTransactionId
+    );
+
+    console.log(
+      "Redirecting customer to Downloads:",
+      downloadPath
+    );
+
+    setLoading(false);
+
+    navigate(
+      downloadPath,
+      {
+        replace: true,
+      }
+    );
+  };
+
   const handlePaddleEvent = (
     event,
-    transactionId,
-    products
+    transactionId
   ) => {
     console.log(
       "Paddle checkout event:",
       event
     );
 
-    /*
-     * Paddle checkout completed.
-     */
     if (
-      event?.name ===
+      !event ||
+      !event.name
+    ) {
+      return;
+    }
+
+    console.log(
+      "Paddle event name:",
+      event.name
+    );
+
+    if (
+      event.name ===
       "checkout.completed"
     ) {
       console.log(
         "Paddle checkout completed."
       );
 
-      console.log(
-        "Completed transaction ID:",
+      redirectToDownloads(
         transactionId
       );
 
-      /*
-       * Stop loading state.
-       */
+      return;
+    }
+
+    if (
+      event.name ===
+      "checkout.closed"
+    ) {
+      console.log(
+        "Paddle checkout closed."
+      );
+
       setLoading(false);
 
-      /*
-       * Build the purchase data.
-       */
-      const purchaseData = {
-        transactionId,
-        products,
-      };
+      return;
+    }
 
-      console.log(
-        "Sending completed purchase to CartDrawer:",
-        purchaseData
+    if (
+      event.name ===
+      "checkout.error"
+    ) {
+      console.error(
+        "Paddle checkout error event:",
+        event
       );
 
-      /*
-       * Let CartDrawer handle the purchase.
-       *
-       * CartDrawer will:
-       *
-       * 1. Clear the cart.
-       * 2. Close the drawer.
-       * 3. Navigate to:
-       *
-       * /downloads?transaction=txn_...
-       */
-      if (onSuccess) {
-        onSuccess(
-          purchaseData
-        );
+      setLoading(false);
 
-        return;
-      }
-
-      /*
-       * Direct fallback.
-       *
-       * This protects the checkout flow
-       * if PaddleButton is ever rendered
-       * without an onSuccess callback.
-       */
-      console.log(
-        "No onSuccess callback supplied. Redirecting directly to Downloads."
+      alert(
+        "Paddle reported an error while processing the checkout."
       );
 
-      navigate(
-        `/downloads?transaction=${encodeURIComponent(
-          transactionId
-        )}`
-      );
+      return;
     }
   };
 
-  /*
-   * Start Paddle Checkout.
-   */
   const handleCheckout = async () => {
     try {
       console.log(
@@ -288,9 +297,6 @@ export default function PaddleButton({
         cartItems
       );
 
-      /*
-       * Make sure cart is not empty.
-       */
       if (
         !cartItems ||
         cartItems.length === 0
@@ -300,18 +306,12 @@ export default function PaddleButton({
         );
       }
 
-      /*
-       * Make sure Paddle client token exists.
-       */
       if (!clientToken) {
         throw new Error(
           "Paddle client-side token is missing."
         );
       }
 
-      /*
-       * Make sure Paddle SDK is ready.
-       */
       if (
         !paddleLoaded ||
         !paddleInitialized ||
@@ -322,9 +322,6 @@ export default function PaddleButton({
         );
       }
 
-      /*
-       * Get product slugs from cart.
-       */
       const slugs = [
         ...new Set(
           cartItems
@@ -347,9 +344,6 @@ export default function PaddleButton({
         slugs
       );
 
-      /*
-       * Make sure valid slugs exist.
-       */
       if (
         slugs.length === 0
       ) {
@@ -358,15 +352,12 @@ export default function PaddleButton({
         );
       }
 
-      /*
-       * Start loading state.
-       */
       setLoading(true);
 
-      /*
-       * Create Paddle transaction
-       * through Netlify Function.
-       */
+      console.log(
+        "Creating Paddle transaction..."
+      );
+
       const response =
         await fetch(
           "/.netlify/functions/create-paddle-transaction",
@@ -384,9 +375,6 @@ export default function PaddleButton({
           }
         );
 
-      /*
-       * Read raw response.
-       */
       const responseText =
         await response.text();
 
@@ -400,26 +388,21 @@ export default function PaddleButton({
         responseText
       );
 
-      /*
-       * Parse response.
-       */
       let data = {};
 
       try {
-        data = responseText
-          ? JSON.parse(
-              responseText
-            )
-          : {};
+        data =
+          responseText
+            ? JSON.parse(
+                responseText
+              )
+            : {};
       } catch {
         throw new Error(
           `Server returned an invalid response (HTTP ${response.status}).`
         );
       }
 
-      /*
-       * Check transaction creation.
-       */
       if (!response.ok) {
         console.error(
           "Transaction creation failed:",
@@ -432,9 +415,6 @@ export default function PaddleButton({
         );
       }
 
-      /*
-       * Make sure transaction ID exists.
-       */
       if (
         !data.transactionId
       ) {
@@ -448,29 +428,14 @@ export default function PaddleButton({
         );
       }
 
-      console.log(
-        "Paddle transaction created:",
-        data.transactionId
-      );
-
-      /*
-       * Store values locally so that
-       * the Paddle callback always has
-       * access to them.
-       */
       const transactionId =
         data.transactionId;
 
-      const products =
-        Array.isArray(
-          data.products
-        )
-          ? data.products
-          : [];
+      console.log(
+        "Paddle transaction created:",
+        transactionId
+      );
 
-      /*
-       * Open Paddle Checkout.
-       */
       console.log(
         "Opening Paddle Checkout:",
         transactionId
@@ -488,16 +453,12 @@ export default function PaddleButton({
           locale: "en",
         },
 
-        /*
-         * Listen for Paddle checkout events.
-         */
         eventCallback: (
           event
         ) => {
           handlePaddleEvent(
             event,
-            transactionId,
-            products
+            transactionId
           );
         },
       });
