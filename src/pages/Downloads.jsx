@@ -45,7 +45,7 @@ export default function Downloads() {
         }
 
         // ---------------------------------------------------------
-        // VALIDATE PRODUCT SLUGS
+        // VALIDATE & PARSE PRODUCT SLUGS (supports multiple)
         // ---------------------------------------------------------
         if (
           typeof productSlugsParam !== "string" ||
@@ -54,14 +54,12 @@ export default function Downloads() {
           throw new Error("No purchased products were provided.");
         }
 
-        console.log(
-          "[Downloads Debug] Decoded product parameter:",
-          productSlugsParam
-        );
+        // Handle both normal commas and possible encoded commas
+        const raw = productSlugsParam.replace(/%2C/gi, ",");
 
         const purchasedSlugs = [
           ...new Set(
-            productSlugsParam
+            raw
               .split(",")
               .map((slug) => slug.trim())
               .filter(Boolean)
@@ -84,9 +82,6 @@ export default function Downloads() {
           "[Downloads Debug] Fetching purchased products from Sanity..."
         );
 
-        // Schema fields:
-        // audioTrack → fullDownload (file)
-        // album      → downloadUrls (array of urls)
         const query = `
           *[
             (_type == "audioTrack" || _type == "album") &&
@@ -134,10 +129,9 @@ export default function Downloads() {
             "[Downloads Debug] Products missing from Sanity:",
             missingSlugs
           );
-          throw new Error(
-            `Some purchased products could not be found in the Adinkra Library: ${missingSlugs.join(
-              ", "
-            )}`
+          // Soft warning instead of hard crash when some items are missing
+          console.warn(
+            `Some products could not be found: ${missingSlugs.join(", ")}`
           );
         }
 
@@ -159,7 +153,7 @@ export default function Downloads() {
         }
 
         // ---------------------------------------------------------
-        // DEBUG DOWNLOAD DATA
+        // DEBUG
         // ---------------------------------------------------------
         orderedDownloads.forEach((item) => {
           console.group(`[Downloads Debug] Product: ${item.title}`);
@@ -168,7 +162,6 @@ export default function Downloads() {
           console.log("Full download (file):", item.fullDownload);
           console.log("Resolved full download URL:", item.fullDownloadUrl);
           console.log("Download URLs (album):", item.downloadUrls);
-          console.log("Asset reference:", item.fullDownloadRef);
           console.log("Total files:", item.totalFiles);
           console.groupEnd();
         });
@@ -266,7 +259,9 @@ export default function Downloads() {
 
       <p className="mb-10 max-w-2xl text-center text-adinkra-gold/80 text-lg">
         Your payment was completed successfully.
-        Your files are ready to download below.
+        {downloads.length > 1
+          ? ` You have ${downloads.length} items ready to download below.`
+          : " Your files are ready to download below."}
       </p>
 
       <div className="w-full max-w-4xl flex flex-col gap-8">
@@ -280,19 +275,9 @@ export default function Downloads() {
               item.fullDownload?.asset?.url ||
               null;
 
-            // Sanity CDN is cross-origin → force download
             if (resolvedDownloadUrl) {
               resolvedDownloadUrl = `${resolvedDownloadUrl}?dl`;
             }
-
-            console.log(
-              "[Downloads Debug] Rendering audio track:",
-              item.title
-            );
-            console.log(
-              "[Downloads Debug] Final audio download URL:",
-              resolvedDownloadUrl
-            );
 
             if (!resolvedDownloadUrl) {
               return (
@@ -305,10 +290,6 @@ export default function Downloads() {
                   </p>
                   <p className="text-sm opacity-70 mt-2">
                     Download file is currently unavailable.
-                  </p>
-                  <p className="text-xs opacity-40 mt-3">
-                    The payment was successful, but no downloadable file is
-                    currently attached to this product.
                   </p>
                 </div>
               );
@@ -338,9 +319,6 @@ export default function Downloads() {
                     .filter(Boolean)
                 : [];
 
-            console.log("[Downloads Debug] Rendering album:", item.title);
-            console.log("[Downloads Debug] Album download URLs:", urls);
-
             if (urls.length === 0) {
               return (
                 <div
@@ -353,15 +331,10 @@ export default function Downloads() {
                   <p className="text-sm opacity-70 mt-2">
                     Download file is currently unavailable.
                   </p>
-                  <p className="text-xs opacity-40 mt-3">
-                    The payment was successful, but no downloadable pack URL is
-                    currently attached to this product.
-                  </p>
                 </div>
               );
             }
 
-            // Show one button per download URL
             return (
               <div
                 key={item._id}
@@ -378,7 +351,6 @@ export default function Downloads() {
 
                 <div className="flex flex-col gap-3">
                   {urls.map((url, index) => {
-                    // Try to make a nicer label from the filename
                     let label = `Download Part ${index + 1}`;
                     try {
                       const filename = decodeURIComponent(
@@ -388,7 +360,7 @@ export default function Downloads() {
                         label = filename.replace(/\.zip$/i, "");
                       }
                     } catch {
-                      // keep default label
+                      // keep default
                     }
 
                     return (
