@@ -62,7 +62,13 @@ export default function Downloads() {
           );
         }
 
-        const cleanTransactionId = transactionId.trim();
+        const cleanTransactionId =
+          transactionId.trim();
+
+        console.log(
+          "[Downloads Debug] Clean transaction ID:",
+          cleanTransactionId
+        );
 
         // ---------------------------------------------------------
         // VALIDATE PRODUCT SLUGS
@@ -110,6 +116,19 @@ export default function Downloads() {
           "[Downloads Debug] Fetching purchased products from Sanity..."
         );
 
+        /*
+         * IMPORTANT:
+         *
+         * The query checks multiple possible download fields:
+         *
+         * 1. audioFile
+         * 2. fullDownloadFile
+         * 3. downloadUrl
+         *
+         * For Sanity file fields, we resolve the asset URL directly
+         * using asset->url.
+         */
+
         const query = `
           *[
             (_type == "audioTrack" || _type == "album") &&
@@ -120,11 +139,17 @@ export default function Downloads() {
             title,
             "slug": slug.current,
             price,
+
+            audioFile,
+            "audioFileUrl": audioFile.asset->url,
+            "audioFileRef": audioFile.asset._ref,
+
             fullDownloadFile,
-            downloadUrl,
-            totalFiles,
             "fullDownloadFileUrl": fullDownloadFile.asset->url,
-            "fullDownloadFileRef": fullDownloadFile.asset._ref
+            "fullDownloadFileRef": fullDownloadFile.asset._ref,
+
+            downloadUrl,
+            totalFiles
           }
         `;
 
@@ -133,24 +158,29 @@ export default function Downloads() {
           query
         );
 
-        const sanityProducts = await sanity.fetch(
-          query,
-          {
-            slugs: purchasedSlugs,
-          }
-        );
+        const sanityProducts =
+          await sanity.fetch(
+            query,
+            {
+              slugs: purchasedSlugs,
+            }
+          );
 
         console.log(
           "[Downloads Debug] Sanity returned products:",
           sanityProducts
         );
 
+        // ---------------------------------------------------------
+        // CHECK SANITY RESULTS
+        // ---------------------------------------------------------
+
         if (
           !Array.isArray(sanityProducts) ||
           sanityProducts.length === 0
         ) {
           throw new Error(
-            "No downloadable products could be found in the Adinkra Library."
+            "No purchased products could be found in the Adinkra Library."
           );
         }
 
@@ -158,13 +188,14 @@ export default function Downloads() {
         // CHECK FOR MISSING PRODUCTS
         // ---------------------------------------------------------
 
-        const missingSlugs = purchasedSlugs.filter(
-          (slug) =>
-            !sanityProducts.some(
-              (product) =>
-                product.slug === slug
-            )
-        );
+        const missingSlugs =
+          purchasedSlugs.filter(
+            (slug) =>
+              !sanityProducts.some(
+                (product) =>
+                  product.slug === slug
+              )
+          );
 
         if (missingSlugs.length > 0) {
           console.error(
@@ -183,21 +214,24 @@ export default function Downloads() {
         // PRESERVE PURCHASE ORDER
         // ---------------------------------------------------------
 
-        const orderedDownloads = purchasedSlugs
-          .map((slug) =>
-            sanityProducts.find(
-              (product) =>
-                product.slug === slug
+        const orderedDownloads =
+          purchasedSlugs
+            .map((slug) =>
+              sanityProducts.find(
+                (product) =>
+                  product.slug === slug
+              )
             )
-          )
-          .filter(Boolean);
+            .filter(Boolean);
 
         console.log(
           "[Downloads Debug] Ordered downloads:",
           orderedDownloads
         );
 
-        if (orderedDownloads.length === 0) {
+        if (
+          orderedDownloads.length === 0
+        ) {
           throw new Error(
             "No downloadable files were found for this purchase."
           );
@@ -207,51 +241,79 @@ export default function Downloads() {
         // DEBUG DOWNLOAD DATA
         // ---------------------------------------------------------
 
-        orderedDownloads.forEach((item) => {
-          console.group(
-            `[Downloads Debug] Product: ${item.title}`
-          );
+        orderedDownloads.forEach(
+          (item) => {
+            console.group(
+              `[Downloads Debug] Product: ${item.title}`
+            );
 
-          console.log(
-            "Type:",
-            item._type
-          );
+            console.log(
+              "ID:",
+              item._id
+            );
 
-          console.log(
-            "Slug:",
-            item.slug
-          );
+            console.log(
+              "Type:",
+              item._type
+            );
 
-          console.log(
-            "Full download file:",
-            item.fullDownloadFile
-          );
+            console.log(
+              "Slug:",
+              item.slug
+            );
 
-          console.log(
-            "Resolved full download URL:",
-            item.fullDownloadFileUrl
-          );
+            console.log(
+              "Audio file:",
+              item.audioFile
+            );
 
-          console.log(
-            "Download URL:",
-            item.downloadUrl
-          );
+            console.log(
+              "Audio file URL:",
+              item.audioFileUrl
+            );
 
-          console.log(
-            "Asset reference:",
-            item.fullDownloadFileRef
-          );
+            console.log(
+              "Audio file asset reference:",
+              item.audioFileRef
+            );
 
-          console.log(
-            "Total files:",
-            item.totalFiles
-          );
+            console.log(
+              "Full download file:",
+              item.fullDownloadFile
+            );
 
-          console.groupEnd();
-        });
+            console.log(
+              "Full download file URL:",
+              item.fullDownloadFileUrl
+            );
+
+            console.log(
+              "Full download file asset reference:",
+              item.fullDownloadFileRef
+            );
+
+            console.log(
+              "Download URL:",
+              item.downloadUrl
+            );
+
+            console.log(
+              "Total files:",
+              item.totalFiles
+            );
+
+            console.groupEnd();
+          }
+        );
+
+        // ---------------------------------------------------------
+        // STORE DOWNLOADS
+        // ---------------------------------------------------------
 
         if (!cancelled) {
-          setDownloads(orderedDownloads);
+          setDownloads(
+            orderedDownloads
+          );
         }
 
         console.log(
@@ -288,7 +350,7 @@ export default function Downloads() {
   ]);
 
   // ---------------------------------------------------------
-  // LOADING
+  // LOADING STATE
   // ---------------------------------------------------------
 
   if (loading) {
@@ -308,7 +370,7 @@ export default function Downloads() {
   }
 
   // ---------------------------------------------------------
-  // ERROR
+  // ERROR STATE
   // ---------------------------------------------------------
 
   if (error) {
@@ -363,6 +425,7 @@ export default function Downloads() {
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-adinkra-bg text-adinkra-gold px-6 py-12">
+
       <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
         Thank You for Your Purchase!
       </h1>
@@ -373,155 +436,241 @@ export default function Downloads() {
       </p>
 
       <div className="w-full max-w-4xl flex flex-col gap-8">
-        {downloads.map((item) => {
-          // =====================================================
-          // AUDIO TRACK
-          // =====================================================
 
-          if (item._type === "audioTrack") {
-            const resolvedDownloadUrl =
-              item.fullDownloadFileUrl ||
-              item.fullDownloadFile?.asset?.url ||
-              item.fullDownloadFile?.url ||
-              item.downloadUrl ||
-              null;
+        {downloads.map(
+          (item) => {
 
-            console.log(
-              "[Downloads Debug] Rendering audio track:",
-              item.title
-            );
+            // =====================================================
+            // AUDIO TRACK
+            // =====================================================
 
-            console.log(
-              "[Downloads Debug] Final audio download URL:",
-              resolvedDownloadUrl
-            );
+            if (
+              item._type ===
+              "audioTrack"
+            ) {
 
-            if (!resolvedDownloadUrl) {
+              /*
+               * Try the possible download sources
+               * in priority order.
+               *
+               * 1. audioFile Sanity asset
+               * 2. fullDownloadFile Sanity asset
+               * 3. direct downloadUrl
+               */
+
+              const resolvedDownloadUrl =
+                item.audioFileUrl ||
+                item.fullDownloadFileUrl ||
+                item.audioFile?.asset?.url ||
+                item.audioFile?.url ||
+                item.fullDownloadFile?.asset?.url ||
+                item.fullDownloadFile?.url ||
+                (
+                  typeof item.downloadUrl ===
+                  "string"
+                    ? item.downloadUrl.trim()
+                    : ""
+                ) ||
+                null;
+
+              console.log(
+                "[Downloads Debug] Rendering audio track:",
+                item.title
+              );
+
+              console.log(
+                "[Downloads Debug] Audio file URL:",
+                item.audioFileUrl
+              );
+
+              console.log(
+                "[Downloads Debug] Full download file URL:",
+                item.fullDownloadFileUrl
+              );
+
+              console.log(
+                "[Downloads Debug] Direct download URL:",
+                item.downloadUrl
+              );
+
+              console.log(
+                "[Downloads Debug] FINAL AUDIO DOWNLOAD URL:",
+                resolvedDownloadUrl
+              );
+
+              // ---------------------------------------------------
+              // NO AUDIO FILE
+              // ---------------------------------------------------
+
+              if (
+                !resolvedDownloadUrl
+              ) {
+                return (
+                  <div
+                    key={
+                      item._id
+                    }
+                    className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
+                  >
+
+                    <p className="font-bold text-xl">
+                      {item.title ||
+                        "Untitled Track"}
+                    </p>
+
+                    <p className="text-sm opacity-70 mt-2">
+                      Download file is currently unavailable.
+                    </p>
+
+                    <p className="text-xs opacity-40 mt-3">
+                      The payment was successful, but no downloadable
+                      audio file is currently configured for this product.
+                    </p>
+
+                  </div>
+                );
+              }
+
+              // ---------------------------------------------------
+              // AUDIO DOWNLOAD BUTTON
+              // ---------------------------------------------------
+
               return (
-                <div
-                  key={item._id}
-                  className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
+                <a
+                  key={
+                    item._id
+                  }
+                  href={
+                    resolvedDownloadUrl
+                  }
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md"
                 >
-                  <p className="font-bold text-xl">
-                    {item.title ||
-                      "Untitled Track"}
-                  </p>
-
-                  <p className="text-sm opacity-70 mt-2">
-                    Download file is currently unavailable.
-                  </p>
-
-                  <p className="text-xs opacity-40 mt-3">
-                    The payment was successful, but no downloadable
-                    file is currently attached to this product.
-                  </p>
-                </div>
+                  Download:{" "}
+                  {item.title ||
+                    "Untitled Track"}
+                </a>
               );
             }
 
-            return (
-              <a
-                key={item._id}
-                href={resolvedDownloadUrl}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md"
-              >
-                Download:{" "}
-                {item.title ||
-                  "Untitled Track"}
-              </a>
-            );
-          }
+            // =====================================================
+            // ALBUM / PACK
+            // =====================================================
 
-          // =====================================================
-          // ALBUM / PACK
-          // =====================================================
+            if (
+              item._type ===
+              "album"
+            ) {
 
-          if (item._type === "album") {
-            const resolvedDownloadUrl =
-              typeof item.downloadUrl ===
-              "string"
-                ? item.downloadUrl.trim()
-                : "";
+              const resolvedDownloadUrl =
+                typeof item.downloadUrl ===
+                "string"
+                  ? item.downloadUrl.trim()
+                  : "";
 
-            console.log(
-              "[Downloads Debug] Rendering album:",
-              item.title
-            );
+              console.log(
+                "[Downloads Debug] Rendering album:",
+                item.title
+              );
 
-            console.log(
-              "[Downloads Debug] Final album download URL:",
-              resolvedDownloadUrl
-            );
+              console.log(
+                "[Downloads Debug] Final album download URL:",
+                resolvedDownloadUrl
+              );
 
-            if (!resolvedDownloadUrl) {
+              // ---------------------------------------------------
+              // NO ALBUM DOWNLOAD URL
+              // ---------------------------------------------------
+
+              if (
+                !resolvedDownloadUrl
+              ) {
+                return (
+                  <div
+                    key={
+                      item._id
+                    }
+                    className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
+                  >
+
+                    <p className="font-bold text-xl">
+                      {item.title ||
+                        "Untitled Pack"}
+                    </p>
+
+                    <p className="text-sm opacity-70 mt-2">
+                      Download file is currently unavailable.
+                    </p>
+
+                    <p className="text-xs opacity-40 mt-3">
+                      The payment was successful, but no downloadable
+                      pack URL is currently configured for this product.
+                    </p>
+
+                  </div>
+                );
+              }
+
+              // ---------------------------------------------------
+              // ALBUM DOWNLOAD BUTTON
+              // ---------------------------------------------------
+
               return (
-                <div
-                  key={item._id}
-                  className="bg-adinkra-highlight/10 border border-adinkra-highlight/20 px-6 py-5 rounded-xl text-center"
+                <a
+                  key={
+                    item._id
+                  }
+                  href={
+                    resolvedDownloadUrl
+                  }
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md flex flex-col items-center gap-2"
                 >
-                  <p className="font-bold text-xl">
+
+                  <span className="font-bold text-xl">
+                    Download Pack:{" "}
                     {item.title ||
                       "Untitled Pack"}
-                  </p>
+                  </span>
 
-                  <p className="text-sm opacity-70 mt-2">
-                    Download file is currently unavailable.
-                  </p>
+                  <span className="text-sm opacity-90">
+                    (
+                    {item.totalFiles ||
+                      "?"}{" "}
+                    files)
+                  </span>
 
-                  <p className="text-xs opacity-40 mt-3">
-                    The payment was successful, but no downloadable
-                    pack URL is currently attached to this product.
-                  </p>
-                </div>
+                </a>
               );
             }
 
-            return (
-              <a
-                key={item._id}
-                href={resolvedDownloadUrl}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md flex flex-col items-center gap-2"
-              >
-                <span className="font-bold text-xl">
-                  Download Pack:{" "}
-                  {item.title ||
-                    "Untitled Pack"}
-                </span>
-
-                <span className="text-sm opacity-90">
-                  (
-                  {item.totalFiles ||
-                    "?"}{" "}
-                  files)
-                </span>
-              </a>
-            );
+            return null;
           }
+        )}
 
-          return null;
-        })}
       </div>
 
       {transactionId && (
         <p className="mt-12 text-center text-adinkra-gold/70">
+
           Your transaction ID:
           <br />
 
           <span className="break-all">
             {transactionId}
           </span>
+
         </p>
       )}
 
       <p className="mt-2 text-center text-adinkra-gold/50">
         Questions? Contact Adinkra Media support.
       </p>
+
     </div>
   );
 }
