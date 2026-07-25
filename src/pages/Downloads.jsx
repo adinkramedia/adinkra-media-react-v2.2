@@ -33,15 +33,11 @@ export default function Downloads() {
     searchParams,
   ] = useSearchParams();
 
-  /*
-   * Paddle transaction ID from:
-   *
-   * /downloads?transaction=txn_xxxxx
-   */
   const transactionId =
-    searchParams.get(
-      "transaction"
-    );
+    searchParams.get("transaction");
+
+  const productSlugsParam =
+    searchParams.get("products");
 
   useEffect(() => {
     let cancelled = false;
@@ -49,10 +45,6 @@ export default function Downloads() {
     const loadDownloads =
       async () => {
         try {
-          /*
-           * Reset state whenever
-           * the transaction changes.
-           */
           if (!cancelled) {
             setLoading(true);
             setError(null);
@@ -60,7 +52,9 @@ export default function Downloads() {
           }
 
           /*
-           * A transaction ID is required.
+           * A transaction ID is still required
+           * so the customer arrives here from
+           * the Paddle checkout flow.
            */
           if (
             typeof transactionId !==
@@ -75,186 +69,29 @@ export default function Downloads() {
           const cleanTransactionId =
             transactionId.trim();
 
-          console.log(
-            "Loading Paddle transaction:",
-            cleanTransactionId
-          );
-
           /*
-           * Ask our Netlify function to:
-           *
-           * 1. Contact Paddle directly.
-           * 2. Verify the transaction.
-           * 3. Confirm the transaction is completed.
-           * 4. Confirm it belongs to Adinkra Media.
-           * 5. Read the products from Paddle custom_data.
-           *
-           * Supabase is NOT used here.
-           */
-          const response =
-            await fetch(
-              `/.netlify/functions/get-paddle-purchase?transaction=${encodeURIComponent(
-                cleanTransactionId
-              )}`,
-              {
-                method: "GET",
-
-                headers: {
-                  Accept:
-                    "application/json",
-                },
-
-                cache: "no-store",
-              }
-            );
-
-          /*
-           * Safely parse the response.
-           */
-          const responseText =
-            await response.text();
-
-          let data = {};
-
-          try {
-            data =
-              responseText
-                ? JSON.parse(
-                    responseText
-                  )
-                : {};
-          } catch (parseError) {
-            console.error(
-              "Invalid JSON returned from get-paddle-purchase:",
-              responseText
-            );
-
-            throw new Error(
-              `The purchase verification service returned an invalid response (HTTP ${response.status}).`
-            );
-          }
-
-          console.log(
-            "Paddle purchase verification response:",
-            {
-              status:
-                response.status,
-
-              data,
-            }
-          );
-
-          /*
-           * Paddle transaction verification failed.
-           */
-          if (!response.ok) {
-            throw new Error(
-              data.error ||
-                "Unable to verify your Paddle purchase."
-            );
-          }
-
-          /*
-           * Make sure the backend confirmed
-           * a successful verification.
+           * Product slugs are passed from
+           * PaddleButton after checkout.
            */
           if (
-            data.success !== true
+            typeof productSlugsParam !==
+              "string" ||
+            !productSlugsParam.trim()
           ) {
             throw new Error(
-              "The purchase could not be verified."
+              "No purchased products were provided."
             );
           }
 
-          /*
-           * Make sure the returned transaction
-           * matches the transaction in the URL.
-           */
-          if (
-            data.transactionId !==
-            cleanTransactionId
-          ) {
-            console.error(
-              "Transaction ID mismatch:",
-              {
-                requested:
-                  cleanTransactionId,
-
-                returned:
-                  data.transactionId,
-              }
-            );
-
-            throw new Error(
-              "The verified transaction does not match the requested transaction."
-            );
-          }
-
-          /*
-           * The backend should only return
-           * completed transactions.
-           */
-          if (
-            data.status &&
-            data.status !==
-              "completed"
-          ) {
-            throw new Error(
-              "This Paddle transaction has not been completed."
-            );
-          }
-
-          /*
-           * Get products from the verified
-           * Paddle transaction.
-           */
-          const purchasedProducts =
-            Array.isArray(
-              data.products
-            )
-              ? data.products
-              : [];
-
-          if (
-            purchasedProducts.length ===
-            0
-          ) {
-            throw new Error(
-              "No purchased products were found for this transaction."
-            );
-          }
-
-          console.log(
-            "Verified purchased products:",
-            purchasedProducts
-          );
-
-          /*
-           * Extract Sanity slugs.
-           *
-           * These slugs were originally stored
-           * inside Paddle custom_data when
-           * create-paddle-transaction.js
-           * created the transaction.
-           */
           const purchasedSlugs = [
             ...new Set(
-              purchasedProducts
-                .map(
-                  (product) =>
-                    product?.slug
-                )
-                .filter(
-                  (slug) =>
-                    typeof slug ===
-                      "string" &&
-                    slug.trim().length >
-                      0
-                )
+              productSlugsParam
+                .split(",")
                 .map(
                   (slug) =>
                     slug.trim()
                 )
+                .filter(Boolean)
             ),
           ];
 
@@ -263,12 +100,17 @@ export default function Downloads() {
             0
           ) {
             throw new Error(
-              "The completed transaction does not contain valid product information."
+              "No valid purchased products were found."
             );
           }
 
           console.log(
-            "Purchased Sanity slugs:",
+            "Preparing downloads for transaction:",
+            cleanTransactionId
+          );
+
+          console.log(
+            "Purchased product slugs:",
             purchasedSlugs
           );
 
@@ -276,8 +118,12 @@ export default function Downloads() {
            * Retrieve the actual downloadable
            * products from Sanity.
            *
-           * Paddle verifies the purchase.
-           * Sanity provides the downloadable files.
+           * The transaction ID is displayed
+           * to the customer as their purchase
+           * reference.
+           *
+           * Product slugs determine which
+           * files are displayed.
            */
           const sanityProducts =
             await sanity.fetch(
@@ -342,8 +188,8 @@ export default function Downloads() {
           }
 
           /*
-           * Preserve the exact order of
-           * products from the Paddle transaction.
+           * Preserve the same product order
+           * used during checkout.
            */
           const orderedDownloads =
             purchasedSlugs
@@ -400,10 +246,13 @@ export default function Downloads() {
     return () => {
       cancelled = true;
     };
-  }, [transactionId]);
+  }, [
+    transactionId,
+    productSlugsParam,
+  ]);
 
   /*
-   * Loading state.
+   * Loading state
    */
   if (loading) {
     return (
@@ -415,7 +264,7 @@ export default function Downloads() {
           </p>
 
           <p className="mt-3 text-sm text-adinkra-gold/60">
-            Verifying your Paddle transaction and loading your files.
+            Loading your purchased files.
           </p>
 
         </div>
@@ -424,7 +273,7 @@ export default function Downloads() {
   }
 
   /*
-   * Error state.
+   * Error state
    */
   if (error) {
     return (
@@ -467,7 +316,7 @@ export default function Downloads() {
   }
 
   /*
-   * Successful purchase.
+   * Successful purchase
    */
   return (
     <div className="min-h-screen flex flex-col items-center bg-adinkra-bg text-adinkra-gold px-6 py-12">
@@ -507,9 +356,6 @@ export default function Downloads() {
                 downloadFile?.url ||
                 null;
 
-              /*
-               * Track has no download URL.
-               */
               if (!downloadUrl) {
                 return (
                   <div
@@ -532,9 +378,6 @@ export default function Downloads() {
                 );
               }
 
-              /*
-               * Track download.
-               */
               return (
                 <a
                   key={
@@ -568,9 +411,6 @@ export default function Downloads() {
                   ? item.downloadUrl.trim()
                   : "";
 
-              /*
-               * Album has no download URL.
-               */
               if (!downloadUrl) {
                 return (
                   <div
@@ -593,9 +433,6 @@ export default function Downloads() {
                 );
               }
 
-              /*
-               * Album / pack download.
-               */
               return (
                 <a
                   key={
