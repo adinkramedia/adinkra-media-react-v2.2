@@ -19,116 +19,64 @@ export default function CartDrawer({
   /*
    * Handle successful Paddle payment.
    *
-   * PaddleButton sends back:
+   * PaddleButton should return:
    *
    * {
    *   transactionId,
-   *   products,
-   *   slugs
+   *   products
    * }
    *
-   * The products come from Sanity through
-   * create-paddle-transaction.js.
+   * The transaction ID is the only value
+   * that needs to be passed to Downloads.
+   *
+   * Downloads will then:
+   *
+   * 1. Receive the transaction ID.
+   * 2. Ask get-paddle-purchase to verify it.
+   * 3. get-paddle-purchase checks Supabase.
+   * 4. Supabase only returns completed purchases.
+   * 5. Downloads retrieves the purchased
+   *    products from Sanity.
    */
   const handleSuccess = (purchaseData) => {
     console.log(
-      "Purchase completed:",
+      "Paddle payment completed:",
       purchaseData
     );
 
     /*
-     * Prefer the product data returned
-     * by the Paddle transaction.
+     * Get the Paddle transaction ID.
+     */
+    const transactionId =
+      purchaseData?.transactionId;
+
+    /*
+     * A transaction ID is required.
      *
-     * This ensures the download page
-     * receives the exact products that
-     * were included in the transaction.
-     */
-    let purchasedSlugs = [];
-
-    if (
-      purchaseData &&
-      Array.isArray(purchaseData.products)
-    ) {
-      purchasedSlugs = purchaseData.products
-        .map(
-          (product) => product.slug
-        )
-        .filter(
-          (slug) =>
-            typeof slug === "string" &&
-            slug.trim().length > 0
-        );
-    }
-
-    /*
-     * Fallback to slugs returned directly
-     * by PaddleButton.
-     */
-    if (
-      purchasedSlugs.length === 0 &&
-      purchaseData &&
-      Array.isArray(purchaseData.slugs)
-    ) {
-      purchasedSlugs = purchaseData.slugs.filter(
-        (slug) =>
-          typeof slug === "string" &&
-          slug.trim().length > 0
-      );
-    }
-
-    /*
-     * Final fallback to the current cart.
+     * Do not fall back to product slugs.
      *
-     * This should normally not be needed,
-     * but protects against an unexpected
-     * missing products response.
-     */
-    if (purchasedSlugs.length === 0) {
-      purchasedSlugs = cartItems
-        .map(
-          (item) => item.slug
-        )
-        .filter(
-          (slug) =>
-            typeof slug === "string" &&
-            slug.trim().length > 0
-        );
-    }
-
-    /*
-     * Remove duplicate slugs.
-     */
-    purchasedSlugs = [
-      ...new Set(purchasedSlugs),
-    ];
-
-    console.log(
-      "Purchased product slugs:",
-      purchasedSlugs
-    );
-
-    /*
-     * Make sure we actually have
-     * products to send to Downloads.
+     * The Downloads page is now secured by
+     * the completed transaction stored in
+     * Supabase.
      */
     if (
-      purchasedSlugs.length === 0
+      typeof transactionId !== "string" ||
+      transactionId.trim().length === 0
     ) {
       console.error(
-        "Payment completed, but no purchased product slugs were found.",
+        "Payment completed, but no Paddle transaction ID was returned.",
         purchaseData
       );
 
       alert(
-        "Your payment was completed, but we could not identify your purchased products. Please contact support before closing this page."
+        "Your payment was completed, but we could not retrieve your transaction ID. Please contact support before closing this page."
       );
 
       return;
     }
 
     /*
-     * Clear the cart AFTER successful payment.
+     * Clear the cart after successful payment.
      */
     clearCart();
 
@@ -138,29 +86,31 @@ export default function CartDrawer({
     onClose();
 
     /*
-     * Send the purchased slugs
-     * to the parent component if provided.
+     * Allow the parent component to handle
+     * the completed purchase if provided.
+     *
+     * Pass the transaction ID rather than
+     * product slugs.
      */
     if (onPurchaseComplete) {
       onPurchaseComplete(
-        purchasedSlugs
+        transactionId
       );
 
       return;
     }
 
     /*
-     * Otherwise redirect directly
-     * to the Downloads page.
+     * Redirect to Downloads using only
+     * the Paddle transaction ID.
      *
-     * Downloads.jsx will use these
-     * Sanity slugs to retrieve the
-     * purchased products and their
-     * download files.
+     * Downloads.jsx will verify this transaction
+     * through get-paddle-purchase before showing
+     * any files.
      */
     navigate(
-      `/downloads?slugs=${encodeURIComponent(
-        purchasedSlugs.join(",")
+      `/downloads?transaction=${encodeURIComponent(
+        transactionId
       )}`
     );
   };
