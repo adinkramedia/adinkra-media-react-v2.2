@@ -170,12 +170,20 @@ export default function PaddleButton({
   /*
    * Send the customer to Downloads.
    *
-   * The transaction ID is passed in
-   * the URL so Downloads.jsx can use it.
+   * The transaction ID and purchased
+   * product slugs are passed in the URL.
+   *
+   * Downloads.jsx uses the product slugs
+   * to retrieve the matching downloadable
+   * products from Sanity.
    */
   const redirectToDownloads = (
-    transactionId
+    transactionId,
+    purchasedSlugs
   ) => {
+    /*
+     * Validate transaction ID.
+     */
     if (
       typeof transactionId !==
         "string" ||
@@ -195,21 +203,108 @@ export default function PaddleButton({
       return;
     }
 
+    /*
+     * Validate purchased product slugs.
+     */
+    if (
+      !Array.isArray(
+        purchasedSlugs
+      ) ||
+      purchasedSlugs.length === 0
+    ) {
+      console.error(
+        "Cannot redirect to Downloads. Missing purchased product slugs:",
+        purchasedSlugs
+      );
+
+      setLoading(false);
+
+      alert(
+        "Your payment was completed, but the purchased products could not be identified. Please contact support."
+      );
+
+      return;
+    }
+
     const cleanTransactionId =
       transactionId.trim();
 
+    /*
+     * Clean and validate the slugs
+     * one final time before creating
+     * the Downloads URL.
+     */
+    const cleanSlugs = [
+      ...new Set(
+        purchasedSlugs
+          .filter(
+            (slug) =>
+              typeof slug ===
+                "string" &&
+              slug.trim().length >
+                0
+          )
+          .map(
+            (slug) =>
+              slug.trim()
+          )
+      ),
+    ];
+
+    if (
+      cleanSlugs.length === 0
+    ) {
+      console.error(
+        "Cannot redirect to Downloads. No valid purchased product slugs remain."
+      );
+
+      setLoading(false);
+
+      alert(
+        "Your payment was completed, but the purchased products could not be identified. Please contact support."
+      );
+
+      return;
+    }
+
+    /*
+     * Build the Downloads URL.
+     *
+     * Example:
+     *
+     * /downloads?transaction=txn_123&products=track-one,pack-two
+     *
+     * URLSearchParams safely encodes
+     * the transaction ID and product slugs.
+     */
+    const downloadParams =
+      new URLSearchParams();
+
+    downloadParams.set(
+      "transaction",
+      cleanTransactionId
+    );
+
+    downloadParams.set(
+      "products",
+      cleanSlugs.join(",")
+    );
+
     const downloadPath =
-      `/downloads?transaction=${encodeURIComponent(
-        cleanTransactionId
-      )}`;
+      `/downloads?${downloadParams.toString()}`;
 
     console.log(
       "Payment completed successfully."
     );
 
     console.log(
-      "Verified transaction ID for Downloads:",
+      "Transaction ID for Downloads:",
       cleanTransactionId
+    );
+
+    console.log(
+      "Purchased product slugs for Downloads:",
+      cleanSlugs
     );
 
     console.log(
@@ -240,7 +335,8 @@ export default function PaddleButton({
    */
   const handlePaddleEvent = (
     event,
-    createdTransactionId
+    createdTransactionId,
+    purchasedSlugs
   ) => {
     console.log(
       "Paddle checkout event:",
@@ -250,7 +346,7 @@ export default function PaddleButton({
     /*
      * Always log the event name
      * so we can see exactly what
-     * Paddle sends in production.
+     * Paddle sends.
      */
     console.log(
       "Paddle checkout event name:",
@@ -283,8 +379,10 @@ export default function PaddleButton({
        * created by create-paddle-transaction.js.
        */
       const completedTransactionId =
-        event?.data?.transaction_id ||
-        event?.data?.transactionId ||
+        event?.data
+          ?.transaction_id ||
+        event?.data
+          ?.transactionId ||
         event?.transaction_id ||
         event?.transactionId ||
         createdTransactionId;
@@ -294,8 +392,15 @@ export default function PaddleButton({
         completedTransactionId
       );
 
+      /*
+       * Redirect using both:
+       *
+       * 1. The completed Paddle transaction ID.
+       * 2. The exact product slugs used for checkout.
+       */
       redirectToDownloads(
-        completedTransactionId
+        completedTransactionId,
+        purchasedSlugs
       );
 
       return;
@@ -400,6 +505,12 @@ export default function PaddleButton({
 
         /*
          * Extract product slugs.
+         *
+         * These exact slugs are:
+         *
+         * 1. Sent to create-paddle-transaction.js.
+         * 2. Used to create the Paddle transaction.
+         * 3. Passed to Downloads.jsx after checkout.
          */
         const slugs = [
           ...new Set(
@@ -539,6 +650,11 @@ export default function PaddleButton({
           cleanTransactionId
         );
 
+        console.log(
+          "Products attached to transaction:",
+          slugs
+        );
+
         /*
          * Open Paddle Checkout.
          */
@@ -564,7 +680,8 @@ export default function PaddleButton({
             (event) => {
               handlePaddleEvent(
                 event,
-                cleanTransactionId
+                cleanTransactionId,
+                slugs
               );
             },
         });
