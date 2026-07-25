@@ -1,9 +1,7 @@
 import { Routes, Route } from "react-router-dom";
-import { useState } from "react";
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 import AnalyticsTracker from "./components/AnalyticsTracker";
-import ProtectedContent from "./components/ProtectedContent";
 
 // Global Components
 import Header from "./components/Header";
@@ -21,9 +19,6 @@ import Downloads from "./pages/Downloads";
 
 import HouseOfAusar from "./pages/HouseOfAusar";
 import HouseArticle from "./pages/HouseArticle";
-
-import News from "./pages/News";
-import NewsArticle from "./pages/NewsArticle";
 
 import AdinkraGallery from "./pages/AdinkraGallery";
 
@@ -43,13 +38,13 @@ import ContributorDashboard from "./pages/ContributorDashboard";
 // Admin
 import AdminModeration from "./pages/AdminModeration";
 
-//Terms
+// Terms
 import Terms from "./pages/Terms";
 
-//privacy
+// Privacy
 import Privacy from "./pages/Privacy";
 
-//refund
+// Refund
 import Refunds from "./pages/Refunds";
 
 // Games
@@ -57,9 +52,6 @@ import Games from "./Games/Games";
 import MorabarabaGame from "./Games/MorabarabaGame";
 
 export default function App() {
-
-  const [audioCartOpen] = useState(false);
-
   return (
     <PayPalScriptProvider
       options={{
@@ -69,7 +61,6 @@ export default function App() {
       }}
     >
       <AudioPlayerProvider>
-
         <div className="min-h-screen flex flex-col bg-adinkra-bg text-adinkra-gold relative">
 
           <AnalyticsTracker />
@@ -79,7 +70,6 @@ export default function App() {
           <BackgroundAudioPlayer />
 
           <main className="flex-1 relative pt-20">
-
             <Routes>
 
               {/* HOME */}
@@ -115,40 +105,24 @@ export default function App() {
 
               <Route
                 path="/dashboard"
-                element={
-                  <ProtectedContent>
-                    <ContributorDashboard/>
-                  </ProtectedContent>
-                }
+                element={<ContributorDashboard />}
               />
 
               <Route
                 path="/dashboard/upload-track"
-                element={
-                  <ProtectedContent>
-                    <UploadTrack/>
-                  </ProtectedContent>
-                }
+                element={<UploadTrack />}
               />
 
               <Route
                 path="/dashboard/create-album"
-                element={
-                  <ProtectedContent>
-                    <CreateAlbum/>
-                  </ProtectedContent>
-                }
+                element={<CreateAlbum />}
               />
 
               {/* ADMIN MODERATION */}
 
               <Route
                 path="/admin/moderation"
-                element={
-                  <ProtectedContent>
-                    <AdminModeration/>
-                  </ProtectedContent>
-                }
+                element={<AdminModeration />}
               />
 
               {/* HOUSE OF AUSAR */}
@@ -166,18 +140,6 @@ export default function App() {
               <Route
                 path="/house/:id"
                 element={<HouseArticle />}
-              />
-
-              {/* NEWS */}
-
-              <Route
-                path="/news"
-                element={<News />}
-              />
-
-              <Route
-                path="/news-article/:slug"
-                element={<NewsArticle />}
               />
 
               {/* GALLERY */}
@@ -223,6 +185,8 @@ export default function App() {
                 element={<Contact />}
               />
 
+              {/* LEGAL */}
+
               <Route
                 path="/terms"
                 element={<Terms />}
@@ -238,66 +202,30 @@ export default function App() {
                 element={<Refunds />}
               />
 
-              {/* PROTECTED TEST */}
-
-              <Route
-                path="/features"
-                element={
-                  <ProtectedContent>
-
-                    <div className="py-20 text-center">
-
-                      <h1 className="text-3xl font-bold text-adinkra-highlight">
-
-                        Features
-
-                      </h1>
-
-                      <p className="mt-4 text-adinkra-gold/70">
-
-                        Protected content area
-
-                      </p>
-
-                    </div>
-
-                  </ProtectedContent>
-                }
-              />
-
               {/* 404 */}
 
               <Route
                 path="*"
                 element={
                   <div className="py-32 text-center">
-
                     <h1 className="text-4xl font-bold text-adinkra-highlight">
-
                       404
-
                     </h1>
 
                     <p className="mt-3 text-adinkra-gold/60">
-
                       The page you're looking for doesn't exist.
-
                     </p>
-
                   </div>
                 }
               />
 
             </Routes>
-
           </main>
 
           <Footer />
 
         </div>
-
       </AudioPlayerProvider>
-
     </PayPalScriptProvider>
   );
 }
