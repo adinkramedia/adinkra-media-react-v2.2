@@ -52,10 +52,11 @@ export default function Downloads() {
           }
 
           /*
-           * A transaction ID is still required
-           * so the customer arrives here from
-           * the Paddle checkout flow.
+           * --------------------------------------------------
+           * VALIDATE TRANSACTION
+           * --------------------------------------------------
            */
+
           if (
             typeof transactionId !==
               "string" ||
@@ -70,9 +71,11 @@ export default function Downloads() {
             transactionId.trim();
 
           /*
-           * Product slugs are passed from
-           * PaddleButton after checkout.
+           * --------------------------------------------------
+           * VALIDATE PRODUCTS
+           * --------------------------------------------------
            */
+
           if (
             typeof productSlugsParam !==
               "string" ||
@@ -105,26 +108,32 @@ export default function Downloads() {
           }
 
           console.log(
-            "Preparing downloads for transaction:",
+            "[Downloads Debug] Preparing downloads for transaction:",
             cleanTransactionId
           );
 
           console.log(
-            "Purchased product slugs:",
+            "[Downloads Debug] Purchased product slugs:",
             purchasedSlugs
           );
 
           /*
-           * Retrieve the actual downloadable
-           * products from Sanity.
+           * --------------------------------------------------
+           * FETCH PRODUCTS FROM SANITY
+           * --------------------------------------------------
            *
-           * The transaction ID is displayed
-           * to the customer as their purchase
-           * reference.
+           * IMPORTANT:
            *
-           * Product slugs determine which
-           * files are displayed.
+           * We resolve the Sanity file asset directly
+           * inside GROQ using:
+           *
+           * fullDownloadFile.asset->url
+           *
+           * This means the browser receives the actual
+           * downloadable URL instead of only the Sanity
+           * asset reference.
            */
+
           const sanityProducts =
             await sanity.fetch(
               `*[
@@ -136,8 +145,17 @@ export default function Downloads() {
                 title,
                 "slug": slug.current,
                 price,
+
+                "fullDownloadFileUrl":
+                  fullDownloadFile.asset->url,
+
+                "fullDownloadFileName":
+                  fullDownloadFile.asset->originalFilename,
+
                 fullDownloadFile,
+
                 downloadUrl,
+
                 totalFiles
               }`,
               {
@@ -145,6 +163,17 @@ export default function Downloads() {
                   purchasedSlugs,
               }
             );
+
+          console.log(
+            "[Downloads Debug] Sanity products returned:",
+            sanityProducts
+          );
+
+          /*
+           * --------------------------------------------------
+           * VALIDATE SANITY PRODUCTS
+           * --------------------------------------------------
+           */
 
           if (
             !Array.isArray(
@@ -159,9 +188,57 @@ export default function Downloads() {
           }
 
           /*
-           * Check that every purchased
-           * product still exists in Sanity.
+           * --------------------------------------------------
+           * DEBUG PRODUCT DATA
+           * --------------------------------------------------
            */
+
+          sanityProducts.forEach(
+            (product) => {
+              console.group(
+                `[Downloads Debug] ${product.title}`
+              );
+
+              console.log(
+                "Type:",
+                product._type
+              );
+
+              console.log(
+                "Slug:",
+                product.slug
+              );
+
+              console.log(
+                "Raw fullDownloadFile:",
+                product.fullDownloadFile
+              );
+
+              console.log(
+                "Resolved file URL:",
+                product.fullDownloadFileUrl
+              );
+
+              console.log(
+                "Resolved filename:",
+                product.fullDownloadFileName
+              );
+
+              console.log(
+                "Album download URL:",
+                product.downloadUrl
+              );
+
+              console.groupEnd();
+            }
+          );
+
+          /*
+           * --------------------------------------------------
+           * CHECK FOR MISSING PRODUCTS
+           * --------------------------------------------------
+           */
+
           const missingSlugs =
             purchasedSlugs.filter(
               (slug) =>
@@ -176,7 +253,7 @@ export default function Downloads() {
             missingSlugs.length > 0
           ) {
             console.error(
-              "Purchased products missing from Sanity:",
+              "[Downloads Debug] Missing products:",
               missingSlugs
             );
 
@@ -188,9 +265,11 @@ export default function Downloads() {
           }
 
           /*
-           * Preserve the same product order
-           * used during checkout.
+           * --------------------------------------------------
+           * PRESERVE PURCHASE ORDER
+           * --------------------------------------------------
            */
+
           const orderedDownloads =
             purchasedSlugs
               .map(
@@ -213,7 +292,7 @@ export default function Downloads() {
           }
 
           console.log(
-            "Downloads ready:",
+            "[Downloads Debug] Downloads ready:",
             orderedDownloads
           );
 
@@ -224,7 +303,7 @@ export default function Downloads() {
           }
         } catch (err) {
           console.error(
-            "Downloads error:",
+            "[Downloads Debug] Downloads error:",
             err
           );
 
@@ -252,8 +331,11 @@ export default function Downloads() {
   ]);
 
   /*
-   * Loading state
+   * --------------------------------------------------
+   * LOADING
+   * --------------------------------------------------
    */
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
@@ -273,8 +355,11 @@ export default function Downloads() {
   }
 
   /*
-   * Error state
+   * --------------------------------------------------
+   * ERROR
+   * --------------------------------------------------
    */
+
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
@@ -316,8 +401,11 @@ export default function Downloads() {
   }
 
   /*
-   * Successful purchase
+   * --------------------------------------------------
+   * SUCCESS
+   * --------------------------------------------------
    */
+
   return (
     <div className="min-h-screen flex flex-col items-center bg-adinkra-bg text-adinkra-gold px-6 py-12">
 
@@ -336,25 +424,37 @@ export default function Downloads() {
           (item) => {
 
             /*
+             * ------------------------------------------------
              * AUDIO TRACK
+             * ------------------------------------------------
              */
+
             if (
               item._type ===
               "audioTrack"
             ) {
-              const downloadFile =
-                Array.isArray(
-                  item.fullDownloadFile
-                )
-                  ? item
-                      .fullDownloadFile?.[0]
-                  : item.fullDownloadFile;
-
               const downloadUrl =
-                downloadFile?.asset
-                  ?.url ||
-                downloadFile?.url ||
-                null;
+                typeof item.fullDownloadFileUrl ===
+                "string"
+                  ? item.fullDownloadFileUrl.trim()
+                  : "";
+
+              console.log(
+                "[Downloads Debug] Audio download:",
+                {
+                  title:
+                    item.title,
+
+                  slug:
+                    item.slug,
+
+                  url:
+                    downloadUrl,
+
+                  filename:
+                    item.fullDownloadFileName,
+                }
+              );
 
               if (!downloadUrl) {
                 return (
@@ -386,7 +486,10 @@ export default function Downloads() {
                   href={
                     downloadUrl
                   }
-                  download
+                  download={
+                    item.fullDownloadFileName ||
+                    true
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md"
@@ -399,8 +502,11 @@ export default function Downloads() {
             }
 
             /*
+             * ------------------------------------------------
              * ALBUM / PACK
+             * ------------------------------------------------
              */
+
             if (
               item._type ===
               "album"
@@ -410,6 +516,23 @@ export default function Downloads() {
                 "string"
                   ? item.downloadUrl.trim()
                   : "";
+
+              console.log(
+                "[Downloads Debug] Album download:",
+                {
+                  title:
+                    item.title,
+
+                  slug:
+                    item.slug,
+
+                  url:
+                    downloadUrl,
+
+                  totalFiles:
+                    item.totalFiles,
+                }
+              );
 
               if (!downloadUrl) {
                 return (
@@ -463,6 +586,17 @@ export default function Downloads() {
                 </a>
               );
             }
+
+            /*
+             * ------------------------------------------------
+             * UNKNOWN TYPE
+             * ------------------------------------------------
+             */
+
+            console.warn(
+              "[Downloads Debug] Unknown product type:",
+              item
+            );
 
             return null;
           }
