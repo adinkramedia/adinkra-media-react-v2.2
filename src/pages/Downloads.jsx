@@ -34,19 +34,15 @@ export default function Downloads() {
           "[Downloads Debug] ===== STARTING DOWNLOAD PREPARATION ====="
         );
         console.log("[Downloads Debug] Full URL:", window.location.href);
-        console.log("[Downloads Debug] Transaction parameter:", transactionId);
-        console.log("[Downloads Debug] Products parameter:", productSlugsParam);
+        console.log("[Downloads Debug] Transaction:", transactionId);
+        console.log("[Downloads Debug] Products param:", productSlugsParam);
 
-        // ---------------------------------------------------------
-        // VALIDATE TRANSACTION ID
-        // ---------------------------------------------------------
+        // Validate transaction
         if (typeof transactionId !== "string" || !transactionId.trim()) {
           throw new Error("No Paddle transaction ID was provided.");
         }
 
-        // ---------------------------------------------------------
-        // VALIDATE & PARSE PRODUCT SLUGS (unlimited)
-        // ---------------------------------------------------------
+        // Validate & parse product slugs (unlimited)
         if (
           typeof productSlugsParam !== "string" ||
           !productSlugsParam.trim()
@@ -54,22 +50,19 @@ export default function Downloads() {
           throw new Error("No purchased products were provided.");
         }
 
-        // Decode any URL-encoded commas and clean the list
         const raw = decodeURIComponent(productSlugsParam).replace(/%2C/gi, ",");
 
         const purchasedSlugs = [
           ...new Set(
             raw
               .split(",")
-              .map((slug) => slug.trim())
+              .map((s) => s.trim())
               .filter(Boolean)
           ),
         ];
 
         console.log(
-          "[Downloads Debug] Purchased product slugs (" +
-            purchasedSlugs.length +
-            "):",
+          `[Downloads Debug] Parsed ${purchasedSlugs.length} product slug(s):`,
           purchasedSlugs
         );
 
@@ -77,13 +70,7 @@ export default function Downloads() {
           throw new Error("No valid purchased products were found.");
         }
 
-        // ---------------------------------------------------------
-        // FETCH PRODUCTS FROM SANITY (works with any number of slugs)
-        // ---------------------------------------------------------
-        console.log(
-          "[Downloads Debug] Fetching purchased products from Sanity..."
-        );
-
+        // Fetch from Sanity
         const query = `
           *[
             (_type == "audioTrack" || _type == "album") &&
@@ -107,8 +94,9 @@ export default function Downloads() {
         });
 
         console.log(
-          "[Downloads Debug] Sanity returned products:",
-          sanityProducts?.length
+          "[Downloads Debug] Sanity returned:",
+          sanityProducts?.length,
+          "products"
         );
 
         if (!Array.isArray(sanityProducts) || sanityProducts.length === 0) {
@@ -117,31 +105,21 @@ export default function Downloads() {
           );
         }
 
-        // ---------------------------------------------------------
-        // CHECK FOR MISSING PRODUCTS (soft warning)
-        // ---------------------------------------------------------
+        // Soft warning for missing items
         const missingSlugs = purchasedSlugs.filter(
           (slug) => !sanityProducts.some((p) => p.slug === slug)
         );
-
         if (missingSlugs.length > 0) {
           console.warn(
-            "[Downloads Debug] Some products missing from Sanity:",
+            "[Downloads Debug] Missing from Sanity:",
             missingSlugs
           );
         }
 
-        // ---------------------------------------------------------
-        // PRESERVE PURCHASE ORDER
-        // ---------------------------------------------------------
+        // Keep original purchase order
         const orderedDownloads = purchasedSlugs
           .map((slug) => sanityProducts.find((p) => p.slug === slug))
           .filter(Boolean);
-
-        console.log(
-          "[Downloads Debug] Ordered downloads:",
-          orderedDownloads.length
-        );
 
         if (orderedDownloads.length === 0) {
           throw new Error(
@@ -149,7 +127,6 @@ export default function Downloads() {
           );
         }
 
-        // Debug each item
         orderedDownloads.forEach((item) => {
           console.group(`[Downloads Debug] ${item.title}`);
           console.log("Type:", item._type);
@@ -181,9 +158,7 @@ export default function Downloads() {
     };
   }, [transactionId, productSlugsParam]);
 
-  // ---------------------------------------------------------
-  // LOADING
-  // ---------------------------------------------------------
+  // Loading
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
@@ -197,20 +172,16 @@ export default function Downloads() {
     );
   }
 
-  // ---------------------------------------------------------
-  // ERROR
-  // ---------------------------------------------------------
+  // Error
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
         <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
           Downloads
         </h1>
-
         <p className="text-lg text-center max-w-3xl text-adinkra-gold/80 whitespace-pre-wrap">
           {error}
         </p>
-
         {transactionId && (
           <p className="mt-6 text-center text-adinkra-gold/60 max-w-2xl">
             Transaction ID:
@@ -218,7 +189,6 @@ export default function Downloads() {
             <span className="break-all">{transactionId}</span>
           </p>
         )}
-
         {productSlugsParam && (
           <p className="mt-4 text-center text-adinkra-gold/50 max-w-2xl">
             Products:
@@ -226,7 +196,6 @@ export default function Downloads() {
             <span className="break-all">{productSlugsParam}</span>
           </p>
         )}
-
         <button
           type="button"
           onClick={() => window.location.reload()}
@@ -238,9 +207,7 @@ export default function Downloads() {
     );
   }
 
-  // ---------------------------------------------------------
-  // SUCCESS PAGE
-  // ---------------------------------------------------------
+  // Success
   return (
     <div className="min-h-screen flex flex-col items-center bg-adinkra-bg text-adinkra-gold px-6 py-12">
       <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
@@ -256,9 +223,7 @@ export default function Downloads() {
 
       <div className="w-full max-w-4xl flex flex-col gap-8">
         {downloads.map((item) => {
-          // =====================================================
-          // AUDIO TRACK
-          // =====================================================
+          // ---------- AUDIO TRACK ----------
           if (item._type === "audioTrack") {
             let url =
               item.fullDownloadUrl ||
@@ -296,12 +261,12 @@ export default function Downloads() {
             );
           }
 
-          // =====================================================
-          // ALBUM
-          // =====================================================
+          // ---------- ALBUM ----------
           if (item._type === "album") {
             const urls = Array.isArray(item.downloadUrls)
-              ? item.downloadUrls.map((u) => String(u).trim()).filter(Boolean)
+              ? item.downloadUrls
+                  .map((u) => String(u).trim())
+                  .filter(Boolean)
               : [];
 
             if (urls.length === 0) {
@@ -341,7 +306,9 @@ export default function Downloads() {
                       const filename = decodeURIComponent(
                         url.split("/").pop() || ""
                       );
-                      if (filename) label = filename.replace(/\.zip$/i, "");
+                      if (filename) {
+                        label = filename.replace(/\.zip$/i, "");
+                      }
                     } catch {
                       // keep default
                     }
