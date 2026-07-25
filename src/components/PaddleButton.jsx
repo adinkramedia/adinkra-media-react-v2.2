@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function PaddleButton({
   cartItems = [],
   onSuccess,
 }) {
+  const navigate = useNavigate();
+
   const [paddleLoaded, setPaddleLoaded] =
     useState(false);
 
@@ -25,21 +28,31 @@ export default function PaddleButton({
           console.error(
             "Paddle client-side token is missing."
           );
+
           return;
         }
 
+        /*
+         * Paddle SDK is already available.
+         */
         if (window.Paddle) {
           console.log(
             "Paddle SDK already loaded."
           );
 
+          /*
+           * Configure Sandbox.
+           */
+          window.Paddle.Environment.set(
+            "sandbox"
+          );
+
+          /*
+           * Initialize Paddle only once.
+           */
           if (
             !window.__ADINKRA_PADDLE_INITIALIZED__
           ) {
-            window.Paddle.Environment.set(
-              "sandbox"
-            );
-
             window.Paddle.Initialize({
               token: clientToken,
             });
@@ -60,11 +73,18 @@ export default function PaddleButton({
           return;
         }
 
+        /*
+         * Check if the Paddle script is
+         * already being loaded.
+         */
         let script =
           document.getElementById(
             "paddle-sdk"
           );
 
+        /*
+         * Create Paddle SDK script.
+         */
         if (!script) {
           script =
             document.createElement(
@@ -83,6 +103,9 @@ export default function PaddleButton({
           );
         }
 
+        /*
+         * Wait for Paddle SDK to load.
+         */
         await new Promise(
           (resolve, reject) => {
             if (window.Paddle) {
@@ -122,10 +145,16 @@ export default function PaddleButton({
           "Paddle SDK loaded."
         );
 
+        /*
+         * Configure Paddle Sandbox.
+         */
         window.Paddle.Environment.set(
           "sandbox"
         );
 
+        /*
+         * Initialize Paddle only once.
+         */
         if (
           !window.__ADINKRA_PADDLE_INITIALIZED__
         ) {
@@ -160,6 +189,94 @@ export default function PaddleButton({
     };
   }, [clientToken]);
 
+  /*
+   * Handle Paddle checkout events.
+   */
+  const handlePaddleEvent = (
+    event,
+    transactionId,
+    products
+  ) => {
+    console.log(
+      "Paddle checkout event:",
+      event
+    );
+
+    /*
+     * Paddle checkout completed.
+     */
+    if (
+      event?.name ===
+      "checkout.completed"
+    ) {
+      console.log(
+        "Paddle checkout completed."
+      );
+
+      console.log(
+        "Completed transaction ID:",
+        transactionId
+      );
+
+      /*
+       * Stop loading state.
+       */
+      setLoading(false);
+
+      /*
+       * Build the purchase data.
+       */
+      const purchaseData = {
+        transactionId,
+        products,
+      };
+
+      console.log(
+        "Sending completed purchase to CartDrawer:",
+        purchaseData
+      );
+
+      /*
+       * Let CartDrawer handle the purchase.
+       *
+       * CartDrawer will:
+       *
+       * 1. Clear the cart.
+       * 2. Close the drawer.
+       * 3. Navigate to:
+       *
+       * /downloads?transaction=txn_...
+       */
+      if (onSuccess) {
+        onSuccess(
+          purchaseData
+        );
+
+        return;
+      }
+
+      /*
+       * Direct fallback.
+       *
+       * This protects the checkout flow
+       * if PaddleButton is ever rendered
+       * without an onSuccess callback.
+       */
+      console.log(
+        "No onSuccess callback supplied. Redirecting directly to Downloads."
+      );
+
+      navigate(
+        `/downloads?transaction=${encodeURIComponent(
+          transactionId
+        )}`
+      );
+    }
+  };
+
+  /*
+   * Start Paddle Checkout.
+   */
   const handleCheckout = async () => {
     try {
       console.log(
@@ -171,6 +288,9 @@ export default function PaddleButton({
         cartItems
       );
 
+      /*
+       * Make sure cart is not empty.
+       */
       if (
         !cartItems ||
         cartItems.length === 0
@@ -180,12 +300,18 @@ export default function PaddleButton({
         );
       }
 
+      /*
+       * Make sure Paddle client token exists.
+       */
       if (!clientToken) {
         throw new Error(
           "Paddle client-side token is missing."
         );
       }
 
+      /*
+       * Make sure Paddle SDK is ready.
+       */
       if (
         !paddleLoaded ||
         !paddleInitialized ||
@@ -196,16 +322,22 @@ export default function PaddleButton({
         );
       }
 
+      /*
+       * Get product slugs from cart.
+       */
       const slugs = [
         ...new Set(
           cartItems
             .map(
-              (item) => item.slug
+              (item) =>
+                item.slug
             )
             .filter(
               (slug) =>
-                typeof slug === "string" &&
-                slug.trim().length > 0
+                typeof slug ===
+                  "string" &&
+                slug.trim().length >
+                  0
             )
         ),
       ];
@@ -215,30 +347,46 @@ export default function PaddleButton({
         slugs
       );
 
-      if (slugs.length === 0) {
+      /*
+       * Make sure valid slugs exist.
+       */
+      if (
+        slugs.length === 0
+      ) {
         throw new Error(
           "No valid product slugs were found in the cart."
         );
       }
 
+      /*
+       * Start loading state.
+       */
       setLoading(true);
 
-      const response = await fetch(
-        "/.netlify/functions/create-paddle-transaction",
-        {
-          method: "POST",
+      /*
+       * Create Paddle transaction
+       * through Netlify Function.
+       */
+      const response =
+        await fetch(
+          "/.netlify/functions/create-paddle-transaction",
+          {
+            method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-          body: JSON.stringify({
-            slugs,
-          }),
-        }
-      );
+            body: JSON.stringify({
+              slugs,
+            }),
+          }
+        );
 
+      /*
+       * Read raw response.
+       */
       const responseText =
         await response.text();
 
@@ -252,6 +400,9 @@ export default function PaddleButton({
         responseText
       );
 
+      /*
+       * Parse response.
+       */
       let data = {};
 
       try {
@@ -266,16 +417,32 @@ export default function PaddleButton({
         );
       }
 
+      /*
+       * Check transaction creation.
+       */
       if (!response.ok) {
+        console.error(
+          "Transaction creation failed:",
+          data
+        );
+
         throw new Error(
           data.error ||
             `Failed to create Paddle transaction (HTTP ${response.status}).`
         );
       }
 
+      /*
+       * Make sure transaction ID exists.
+       */
       if (
         !data.transactionId
       ) {
+        console.error(
+          "Missing Paddle transaction ID:",
+          data
+        );
+
         throw new Error(
           "No Paddle transaction ID was returned."
         );
@@ -286,9 +453,31 @@ export default function PaddleButton({
         data.transactionId
       );
 
+      /*
+       * Store values locally so that
+       * the Paddle callback always has
+       * access to them.
+       */
+      const transactionId =
+        data.transactionId;
+
+      const products =
+        Array.isArray(
+          data.products
+        )
+          ? data.products
+          : [];
+
+      /*
+       * Open Paddle Checkout.
+       */
+      console.log(
+        "Opening Paddle Checkout:",
+        transactionId
+      );
+
       window.Paddle.Checkout.open({
-        transactionId:
-          data.transactionId,
+        transactionId,
 
         settings: {
           displayMode:
@@ -299,34 +488,23 @@ export default function PaddleButton({
           locale: "en",
         },
 
-        eventCallback: (event) => {
-          console.log(
-            "Paddle checkout event:",
-            event
+        /*
+         * Listen for Paddle checkout events.
+         */
+        eventCallback: (
+          event
+        ) => {
+          handlePaddleEvent(
+            event,
+            transactionId,
+            products
           );
-
-          if (
-            event.name ===
-            "checkout.completed"
-          ) {
-            console.log(
-              "Paddle checkout completed."
-            );
-
-            setLoading(false);
-
-            if (onSuccess) {
-              onSuccess({
-                transactionId:
-                  data.transactionId,
-
-                products:
-                  data.products || [],
-              });
-            }
-          }
         },
       });
+
+      console.log(
+        "Paddle Checkout opened."
+      );
     } catch (error) {
       console.error(
         "Paddle checkout error:",
@@ -345,7 +523,9 @@ export default function PaddleButton({
   return (
     <button
       type="button"
-      onClick={handleCheckout}
+      onClick={
+        handleCheckout
+      }
       disabled={
         loading ||
         !paddleLoaded ||
