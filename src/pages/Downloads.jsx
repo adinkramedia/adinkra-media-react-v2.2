@@ -33,46 +33,25 @@ export default function Downloads() {
         console.log(
           "[Downloads Debug] ===== STARTING DOWNLOAD PREPARATION ====="
         );
-
-        console.log(
-          "[Downloads Debug] Full URL:",
-          window.location.href
-        );
-
-        console.log(
-          "[Downloads Debug] Transaction parameter:",
-          transactionId
-        );
-
-        console.log(
-          "[Downloads Debug] Products parameter:",
-          productSlugsParam
-        );
+        console.log("[Downloads Debug] Full URL:", window.location.href);
+        console.log("[Downloads Debug] Transaction parameter:", transactionId);
+        console.log("[Downloads Debug] Products parameter:", productSlugsParam);
 
         // ---------------------------------------------------------
         // VALIDATE TRANSACTION ID
         // ---------------------------------------------------------
-
-        if (
-          typeof transactionId !== "string" ||
-          !transactionId.trim()
-        ) {
-          throw new Error(
-            "No Paddle transaction ID was provided."
-          );
+        if (typeof transactionId !== "string" || !transactionId.trim()) {
+          throw new Error("No Paddle transaction ID was provided.");
         }
 
         // ---------------------------------------------------------
         // VALIDATE PRODUCT SLUGS
         // ---------------------------------------------------------
-
         if (
           typeof productSlugsParam !== "string" ||
           !productSlugsParam.trim()
         ) {
-          throw new Error(
-            "No purchased products were provided."
-          );
+          throw new Error("No purchased products were provided.");
         }
 
         console.log(
@@ -95,20 +74,17 @@ export default function Downloads() {
         );
 
         if (purchasedSlugs.length === 0) {
-          throw new Error(
-            "No valid purchased products were found."
-          );
+          throw new Error("No valid purchased products were found.");
         }
 
         // ---------------------------------------------------------
         // FETCH PRODUCTS FROM SANITY
         // ---------------------------------------------------------
-
         console.log(
           "[Downloads Debug] Fetching purchased products from Sanity..."
         );
 
-        // ✅ Correct field names from your schema:
+        // Schema fields:
         // audioTrack → fullDownload (file)
         // album      → downloadUrls (array of urls)
         const query = `
@@ -129,27 +105,18 @@ export default function Downloads() {
           }
         `;
 
-        console.log(
-          "[Downloads Debug] Sanity query:",
-          query
-        );
+        console.log("[Downloads Debug] Sanity query:", query);
 
-        const sanityProducts = await sanity.fetch(
-          query,
-          {
-            slugs: purchasedSlugs,
-          }
-        );
+        const sanityProducts = await sanity.fetch(query, {
+          slugs: purchasedSlugs,
+        });
 
         console.log(
           "[Downloads Debug] Sanity returned products:",
           sanityProducts
         );
 
-        if (
-          !Array.isArray(sanityProducts) ||
-          sanityProducts.length === 0
-        ) {
+        if (!Array.isArray(sanityProducts) || sanityProducts.length === 0) {
           throw new Error(
             "No downloadable products could be found in the Adinkra Library."
           );
@@ -158,13 +125,8 @@ export default function Downloads() {
         // ---------------------------------------------------------
         // CHECK FOR MISSING PRODUCTS
         // ---------------------------------------------------------
-
         const missingSlugs = purchasedSlugs.filter(
-          (slug) =>
-            !sanityProducts.some(
-              (product) =>
-                product.slug === slug
-            )
+          (slug) => !sanityProducts.some((product) => product.slug === slug)
         );
 
         if (missingSlugs.length > 0) {
@@ -172,7 +134,6 @@ export default function Downloads() {
             "[Downloads Debug] Products missing from Sanity:",
             missingSlugs
           );
-
           throw new Error(
             `Some purchased products could not be found in the Adinkra Library: ${missingSlugs.join(
               ", "
@@ -183,20 +144,13 @@ export default function Downloads() {
         // ---------------------------------------------------------
         // PRESERVE PURCHASE ORDER
         // ---------------------------------------------------------
-
         const orderedDownloads = purchasedSlugs
           .map((slug) =>
-            sanityProducts.find(
-              (product) =>
-                product.slug === slug
-            )
+            sanityProducts.find((product) => product.slug === slug)
           )
           .filter(Boolean);
 
-        console.log(
-          "[Downloads Debug] Ordered downloads:",
-          orderedDownloads
-        );
+        console.log("[Downloads Debug] Ordered downloads:", orderedDownloads);
 
         if (orderedDownloads.length === 0) {
           throw new Error(
@@ -207,12 +161,8 @@ export default function Downloads() {
         // ---------------------------------------------------------
         // DEBUG DOWNLOAD DATA
         // ---------------------------------------------------------
-
         orderedDownloads.forEach((item) => {
-          console.group(
-            `[Downloads Debug] Product: ${item.title}`
-          );
-
+          console.group(`[Downloads Debug] Product: ${item.title}`);
           console.log("Type:", item._type);
           console.log("Slug:", item.slug);
           console.log("Full download (file):", item.fullDownload);
@@ -220,7 +170,6 @@ export default function Downloads() {
           console.log("Download URLs (album):", item.downloadUrls);
           console.log("Asset reference:", item.fullDownloadRef);
           console.log("Total files:", item.totalFiles);
-
           console.groupEnd();
         });
 
@@ -228,21 +177,12 @@ export default function Downloads() {
           setDownloads(orderedDownloads);
         }
 
-        console.log(
-          "[Downloads Debug] Downloads ready:",
-          orderedDownloads
-        );
+        console.log("[Downloads Debug] Downloads ready:", orderedDownloads);
       } catch (err) {
-        console.error(
-          "[Downloads Debug] Downloads error:",
-          err
-        );
+        console.error("[Downloads Debug] Downloads error:", err);
 
         if (!cancelled) {
-          setError(
-            err?.message ||
-              "Unable to load your downloads."
-          );
+          setError(err?.message || "Unable to load your downloads.");
         }
       } finally {
         if (!cancelled) {
@@ -256,23 +196,16 @@ export default function Downloads() {
     return () => {
       cancelled = true;
     };
-  }, [
-    transactionId,
-    productSlugsParam,
-  ]);
+  }, [transactionId, productSlugsParam]);
 
   // ---------------------------------------------------------
   // LOADING
   // ---------------------------------------------------------
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
         <div className="text-center">
-          <p className="text-xl">
-            Preparing your downloads...
-          </p>
-
+          <p className="text-xl">Preparing your downloads...</p>
           <p className="mt-3 text-sm text-adinkra-gold/60">
             Loading your purchased files.
           </p>
@@ -284,7 +217,6 @@ export default function Downloads() {
   // ---------------------------------------------------------
   // ERROR
   // ---------------------------------------------------------
-
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-adinkra-bg text-adinkra-gold px-6">
@@ -300,10 +232,7 @@ export default function Downloads() {
           <p className="mt-6 text-center text-adinkra-gold/60 max-w-2xl">
             Transaction ID:
             <br />
-
-            <span className="break-all">
-              {transactionId}
-            </span>
+            <span className="break-all">{transactionId}</span>
           </p>
         )}
 
@@ -311,18 +240,13 @@ export default function Downloads() {
           <p className="mt-4 text-center text-adinkra-gold/50 max-w-2xl">
             Products:
             <br />
-
-            <span className="break-all">
-              {productSlugsParam}
-            </span>
+            <span className="break-all">{productSlugsParam}</span>
           </p>
         )}
 
         <button
           type="button"
-          onClick={() =>
-            window.location.reload()
-          }
+          onClick={() => window.location.reload()}
           className="mt-8 bg-adinkra-highlight text-adinkra-bg px-6 py-4 rounded-xl hover:opacity-90 transition text-lg font-medium shadow-md"
         >
           Try Again
@@ -334,7 +258,6 @@ export default function Downloads() {
   // ---------------------------------------------------------
   // SUCCESS PAGE
   // ---------------------------------------------------------
-
   return (
     <div className="min-h-screen flex flex-col items-center bg-adinkra-bg text-adinkra-gold px-6 py-12">
       <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">
@@ -349,17 +272,15 @@ export default function Downloads() {
       <div className="w-full max-w-4xl flex flex-col gap-8">
         {downloads.map((item) => {
           // =====================================================
-          // AUDIO TRACK
+          // AUDIO TRACK (Single)
           // =====================================================
-
           if (item._type === "audioTrack") {
-            // Prefer the resolved URL from GROQ, fall back to nested asset
             let resolvedDownloadUrl =
               item.fullDownloadUrl ||
               item.fullDownload?.asset?.url ||
               null;
 
-            // Sanity files are cross-origin → force download with ?dl
+            // Sanity CDN is cross-origin → force download
             if (resolvedDownloadUrl) {
               resolvedDownloadUrl = `${resolvedDownloadUrl}?dl`;
             }
@@ -368,7 +289,6 @@ export default function Downloads() {
               "[Downloads Debug] Rendering audio track:",
               item.title
             );
-
             console.log(
               "[Downloads Debug] Final audio download URL:",
               resolvedDownloadUrl
@@ -383,14 +303,12 @@ export default function Downloads() {
                   <p className="font-bold text-xl">
                     {item.title || "Untitled Track"}
                   </p>
-
                   <p className="text-sm opacity-70 mt-2">
                     Download file is currently unavailable.
                   </p>
-
                   <p className="text-xs opacity-40 mt-3">
-                    The payment was successful, but no downloadable
-                    file is currently attached to this product.
+                    The payment was successful, but no downloadable file is
+                    currently attached to this product.
                   </p>
                 </div>
               );
@@ -412,30 +330,18 @@ export default function Downloads() {
           // =====================================================
           // ALBUM / PACK
           // =====================================================
-
           if (item._type === "album") {
-            // downloadUrls is an array of strings in your schema
-            let resolvedDownloadUrl = "";
+            const urls =
+              Array.isArray(item.downloadUrls) && item.downloadUrls.length > 0
+                ? item.downloadUrls
+                    .map((url) => String(url).trim())
+                    .filter(Boolean)
+                : [];
 
-            if (
-              Array.isArray(item.downloadUrls) &&
-              item.downloadUrls.length > 0
-            ) {
-              // Take the first URL (you can change this later if you want multiple buttons)
-              resolvedDownloadUrl = String(item.downloadUrls[0]).trim();
-            }
+            console.log("[Downloads Debug] Rendering album:", item.title);
+            console.log("[Downloads Debug] Album download URLs:", urls);
 
-            console.log(
-              "[Downloads Debug] Rendering album:",
-              item.title
-            );
-
-            console.log(
-              "[Downloads Debug] Final album download URL:",
-              resolvedDownloadUrl
-            );
-
-            if (!resolvedDownloadUrl) {
+            if (urls.length === 0) {
               return (
                 <div
                   key={item._id}
@@ -444,35 +350,61 @@ export default function Downloads() {
                   <p className="font-bold text-xl">
                     {item.title || "Untitled Pack"}
                   </p>
-
                   <p className="text-sm opacity-70 mt-2">
                     Download file is currently unavailable.
                   </p>
-
                   <p className="text-xs opacity-40 mt-3">
-                    The payment was successful, but no downloadable
-                    pack URL is currently attached to this product.
+                    The payment was successful, but no downloadable pack URL is
+                    currently attached to this product.
                   </p>
                 </div>
               );
             }
 
+            // Show one button per download URL
             return (
-              <a
+              <div
                 key={item._id}
-                href={resolvedDownloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-adinkra-highlight text-adinkra-bg px-6 py-5 rounded-xl text-center hover:opacity-90 transition text-lg font-medium shadow-md flex flex-col items-center gap-2"
+                className="flex flex-col gap-4 bg-adinkra-highlight/5 border border-adinkra-highlight/20 px-6 py-6 rounded-xl"
               >
-                <span className="font-bold text-xl">
-                  Download Pack: {item.title || "Untitled Pack"}
-                </span>
+                <div className="text-center">
+                  <p className="font-bold text-xl">
+                    {item.title || "Untitled Pack"}
+                  </p>
+                  <p className="text-sm opacity-80 mt-1">
+                    {item.totalFiles || urls.length} files
+                  </p>
+                </div>
 
-                <span className="text-sm opacity-90">
-                  ({item.totalFiles || "?"} files)
-                </span>
-              </a>
+                <div className="flex flex-col gap-3">
+                  {urls.map((url, index) => {
+                    // Try to make a nicer label from the filename
+                    let label = `Download Part ${index + 1}`;
+                    try {
+                      const filename = decodeURIComponent(
+                        url.split("/").pop() || ""
+                      );
+                      if (filename) {
+                        label = filename.replace(/\.zip$/i, "");
+                      }
+                    } catch {
+                      // keep default label
+                    }
+
+                    return (
+                      <a
+                        key={`${item._id}-${index}`}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-adinkra-highlight text-adinkra-bg px-6 py-4 rounded-xl text-center hover:opacity-90 transition text-base font-medium shadow-md"
+                      >
+                        {label}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
             );
           }
 
@@ -484,10 +416,7 @@ export default function Downloads() {
         <p className="mt-12 text-center text-adinkra-gold/70">
           Your transaction ID:
           <br />
-
-          <span className="break-all">
-            {transactionId}
-          </span>
+          <span className="break-all">{transactionId}</span>
         </p>
       )}
 
