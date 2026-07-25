@@ -5,7 +5,6 @@ import PaddleButton from "../components/PaddleButton";
 export default function CartDrawer({
   isOpen,
   onClose,
-  onPurchaseComplete,
 }) {
   const navigate = useNavigate();
 
@@ -25,13 +24,9 @@ export default function CartDrawer({
     const transactionId =
       purchaseData?.transactionId;
 
-    const products =
-      Array.isArray(
-        purchaseData?.products
-      )
-        ? purchaseData.products
-        : [];
-
+    /*
+     * A valid Paddle transaction ID is required.
+     */
     if (
       typeof transactionId !== "string" ||
       transactionId.trim().length === 0
@@ -48,75 +43,40 @@ export default function CartDrawer({
       return;
     }
 
-    if (
-      products.length === 0
-    ) {
-      console.error(
-        "Payment completed, but no purchased products were returned.",
-        purchaseData
-      );
-
-      alert(
-        "Your payment was completed, but we could not identify your purchased products. Please contact support."
-      );
-
-      return;
-    }
-
-    const purchasedSlugs = [
-      ...new Set(
-        products
-          .map(
-            (product) =>
-              typeof product?.slug ===
-              "string"
-                ? product.slug.trim()
-                : ""
-          )
-          .filter(Boolean)
-      ),
-    ];
-
-    if (
-      purchasedSlugs.length === 0
-    ) {
-      console.error(
-        "Payment completed, but no valid product slugs were returned.",
-        products
-      );
-
-      alert(
-        "Your payment was completed, but we could not identify your purchased products. Please contact support."
-      );
-
-      return;
-    }
-
     console.log(
-      "Purchased slugs:",
-      purchasedSlugs
+      "Valid Paddle transaction ID:",
+      transactionId
     );
 
+    /*
+     * Clear the cart.
+     */
     clearCart();
 
+    /*
+     * Close the cart drawer.
+     */
     onClose();
 
-    if (onPurchaseComplete) {
-      onPurchaseComplete({
-        transactionId,
-        products,
-        slugs: purchasedSlugs,
-      });
-
-      return;
-    }
-
-    navigate(
+    /*
+     * Navigate directly to Downloads.
+     *
+     * Downloads.jsx receives the Paddle
+     * transaction ID and uses it to verify
+     * the purchase.
+     */
+    const downloadsUrl =
       `/downloads?transaction=${encodeURIComponent(
         transactionId
-      )}&slugs=${encodeURIComponent(
-        purchasedSlugs.join(",")
-      )}`
+      )}`;
+
+    console.log(
+      "Navigating to Downloads:",
+      downloadsUrl
+    );
+
+    navigate(
+      downloadsUrl
     );
   };
 
@@ -130,7 +90,9 @@ export default function CartDrawer({
     >
       <div className="p-6 h-full flex flex-col">
 
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
+
           <h2 className="text-2xl font-bold">
             Your Licenses
           </h2>
@@ -143,8 +105,10 @@ export default function CartDrawer({
           >
             ✕
           </button>
+
         </div>
 
+        {/* Cart Items */}
         <div className="flex-1 overflow-y-auto">
 
           {cartItems.length === 0 && (
@@ -158,6 +122,7 @@ export default function CartDrawer({
               key={item.slug}
               className="mb-4 border-b border-adinkra-highlight/20 pb-4"
             >
+
               <p className="font-semibold">
                 {item.title}
               </p>
@@ -181,11 +146,13 @@ export default function CartDrawer({
               >
                 Remove
               </button>
+
             </div>
           ))}
 
         </div>
 
+        {/* Total + Checkout */}
         <div className="pt-6 border-t border-adinkra-highlight/20">
 
           <p className="text-xl font-bold mb-4">
@@ -195,10 +162,12 @@ export default function CartDrawer({
 
           {cartItems.length > 0 && (
             <div className="mt-6">
+
               <PaddleButton
                 cartItems={cartItems}
                 onSuccess={handleSuccess}
               />
+
             </div>
           )}
 
