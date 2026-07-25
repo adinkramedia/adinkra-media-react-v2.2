@@ -2,7 +2,7 @@
 # FUNCTIONS
 # ==========================
 [functions]
-  directory = "netlify/functions"
+  directory = "temp_netlify/functions"
 
 # ==========================
 # BUILD SETTINGS
