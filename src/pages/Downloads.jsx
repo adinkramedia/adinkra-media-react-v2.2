@@ -1,13 +1,5 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { createClient } from "@sanity/client";
-
-const sanity = createClient({
-  projectId: import.meta.env.VITE_SANITY_PROJECT_ID,
-  dataset: "production",
-  useCdn: true,
-  apiVersion: "2024-01-01",
-});
 
 export default function Downloads() {
   const [downloads, setDownloads] = useState([]);
@@ -37,97 +29,48 @@ export default function Downloads() {
         console.log("[Downloads Debug] Transaction:", transactionId);
         console.log("[Downloads Debug] Products param:", productSlugsParam);
 
-        // Validate transaction
         if (typeof transactionId !== "string" || !transactionId.trim()) {
           throw new Error("No Paddle transaction ID was provided.");
         }
 
-        // Validate & parse product slugs (unlimited)
-        if (
-          typeof productSlugsParam !== "string" ||
-          !productSlugsParam.trim()
-        ) {
-          throw new Error("No purchased products were provided.");
-        }
-
-        const raw = decodeURIComponent(productSlugsParam).replace(/%2C/gi, ",");
-
-        const purchasedSlugs = [
-          ...new Set(
-            raw
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          ),
-        ];
-
-        console.log(
-          `[Downloads Debug] Parsed ${purchasedSlugs.length} product slug(s):`,
-          purchasedSlugs
-        );
-
-        if (purchasedSlugs.length === 0) {
-          throw new Error("No valid purchased products were found.");
-        }
-
-        // Fetch from Sanity
-        const query = `
-          *[
-            (_type == "audioTrack" || _type == "album") &&
-            slug.current in $slugs
-          ]{
-            _id,
-            _type,
-            title,
-            "slug": slug.current,
-            price,
-            fullDownload,
-            downloadUrls,
-            totalFiles,
-            "fullDownloadUrl": fullDownload.asset->url,
-            "fullDownloadRef": fullDownload.asset._ref
-          }
-        `;
-
-        const sanityProducts = await sanity.fetch(query, {
-          slugs: purchasedSlugs,
+        // Server verifies payment with Paddle and returns only paid products.
+        // products= is optional (ordering hint only) — access is not based on it.
+        const params = new URLSearchParams({
+          transaction: transactionId.trim(),
         });
+        if (typeof productSlugsParam === "string" && productSlugsParam.trim()) {
+          params.set("products", productSlugsParam.trim());
+        }
 
-        console.log(
-          "[Downloads Debug] Sanity returned:",
-          sanityProducts?.length,
-          "products"
+        const res = await fetch(
+          `/.netlify/functions/get-downloads?${params.toString()}`,
+          {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          }
         );
 
-        if (!Array.isArray(sanityProducts) || sanityProducts.length === 0) {
+        const data = await res.json().catch(() => ({}));
+
+        console.log("[Downloads Debug] get-downloads status:", res.status);
+        console.log("[Downloads Debug] get-downloads response:", data);
+
+        if (!res.ok) {
           throw new Error(
-            "No downloadable products could be found in the Adinkra Library."
+            data?.error ||
+              "Unable to verify this purchase. Please contact support."
           );
         }
 
-        // Soft warning for missing items
-        const missingSlugs = purchasedSlugs.filter(
-          (slug) => !sanityProducts.some((p) => p.slug === slug)
-        );
-        if (missingSlugs.length > 0) {
-          console.warn(
-            "[Downloads Debug] Missing from Sanity:",
-            missingSlugs
-          );
-        }
+        const products = Array.isArray(data.products) ? data.products : [];
 
-        // Keep original purchase order
-        const orderedDownloads = purchasedSlugs
-          .map((slug) => sanityProducts.find((p) => p.slug === slug))
-          .filter(Boolean);
-
-        if (orderedDownloads.length === 0) {
+        if (products.length === 0) {
           throw new Error(
             "No downloadable files were found for this purchase."
           );
         }
 
-        orderedDownloads.forEach((item) => {
+        products.forEach((item) => {
           console.group(`[Downloads Debug] ${item.title}`);
           console.log("Type:", item._type);
           console.log("Slug:", item.slug);
@@ -137,7 +80,7 @@ export default function Downloads() {
         });
 
         if (!cancelled) {
-          setDownloads(orderedDownloads);
+          setDownloads(products);
         }
       } catch (err) {
         console.error("[Downloads Debug] Error:", err);
@@ -343,9 +286,14 @@ export default function Downloads() {
       )}
 
       <p className="mt-2 text-center text-adinkra-gold/50">
-        Questions? Contact <a href="mailto:support@adinkramedia.com" className="underline hover:opacity-80">
+        Questions? Contact{" "}
+        <a
+          href="mailto:support@adinkramedia.com"
+          className="underline hover:opacity-80"
+        >
           support@adinkramedia.com
-        </a>.
+        </a>
+        .
       </p>
     </div>
   );
