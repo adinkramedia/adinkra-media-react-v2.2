@@ -343,7 +343,9 @@ export default function Downloads() {
       )}
 
       <p className="mt-2 text-center text-adinkra-gold/50">
-        Questions? Contact Adinkra Media support.
+        Questions? Contact <a href="mailto:support@adinkramedia.com" className="underline hover:opacity-80">
+          support@adinkramedia.com
+        </a>.
       </p>
     </div>
   );
