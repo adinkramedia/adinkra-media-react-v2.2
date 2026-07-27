@@ -9,11 +9,7 @@ const sanity = createClient({
   apiVersion: "2024-01-01",
 });
 
-const PAID_STATUSES = new Set([
-  "completed",
-  "paid",
-  "billed",
-]);
+const PAID_STATUSES = new Set(["completed", "paid", "billed"]);
 
 function json(statusCode, body) {
   return {
@@ -31,6 +27,18 @@ function getPaddleApiBase() {
   return env === "production" || env === "live"
     ? "https://api.paddle.com"
     : "https://sandbox-api.paddle.com";
+}
+
+/** Build a proxy download path (no real CDN URL). */
+function proxyUrl(transactionId, slug, fileIndex) {
+  const q = new URLSearchParams({
+    transaction: transactionId,
+    slug,
+  });
+  if (typeof fileIndex === "number") {
+    q.set("file", String(fileIndex));
+  }
+  return `/.netlify/functions/download-file?${q.toString()}`;
 }
 
 export const handler = async (event) => {
@@ -61,13 +69,9 @@ export const handler = async (event) => {
       return json(500, { error: "Server configuration error" });
     }
 
-    // ---------------------------------------------------------
-    // 1. Verify transaction with Paddle (source of truth)
-    // ---------------------------------------------------------
     const paddleRes = await fetch(
       `${getPaddleApiBase()}/transactions/${encodeURIComponent(transactionId)}`,
       {
-        method: "GET",
         headers: {
           Authorization: `Bearer ${paddleApiKey}`,
           "Content-Type": "application/json",
@@ -76,23 +80,16 @@ export const handler = async (event) => {
     );
 
     const paddleJson = await paddleRes.json().catch(() => null);
-
-    if (!paddleRes.ok) {
-      console.error("Paddle transaction lookup failed:", paddleJson);
+    if (!paddleRes.ok || !paddleJson?.data) {
       return json(404, {
         error: "Transaction not found or not accessible",
         transactionId,
       });
     }
 
-    const txn = paddleJson?.data;
-    if (!txn) {
-      return json(404, { error: "Transaction not found", transactionId });
-    }
-
+    const txn = paddleJson.data;
     const status = String(txn.status || "").toLowerCase();
     if (!PAID_STATUSES.has(status)) {
-      console.warn("Transaction not paid:", transactionId, status);
       return json(403, {
         error: "This transaction has not been completed.",
         transactionId,
@@ -100,9 +97,6 @@ export const handler = async (event) => {
       });
     }
 
-    // ---------------------------------------------------------
-    // 2. Products from custom_data (set by create-paddle-transaction)
-    // ---------------------------------------------------------
     const customProducts = Array.isArray(txn.custom_data?.products)
       ? txn.custom_data.products
       : [];
@@ -111,7 +105,6 @@ export const handler = async (event) => {
       .map((p) => (typeof p?.slug === "string" ? p.slug.trim() : ""))
       .filter(Boolean);
 
-    // Optional client order hint (never trusted for access)
     const clientProductsParam =
       typeof params.products === "string" ? params.products : "";
 
@@ -125,7 +118,6 @@ export const handler = async (event) => {
             .filter(Boolean)
         ),
       ];
-
       const allowed = new Set(purchasedSlugs);
       const ordered = clientOrder.filter((s) => allowed.has(s));
       const missing = purchasedSlugs.filter((s) => !ordered.includes(s));
@@ -133,7 +125,6 @@ export const handler = async (event) => {
     }
 
     if (purchasedSlugs.length === 0) {
-      console.error("Paid transaction has no product slugs in custom_data:", transactionId);
       return json(400, {
         error:
           "This payment was recorded, but no products were attached to the transaction.",
@@ -141,9 +132,6 @@ export const handler = async (event) => {
       });
     }
 
-    // ---------------------------------------------------------
-    // 3. Load downloadable files from Sanity (server-side only)
-    // ---------------------------------------------------------
     const sanityProducts = await sanity.fetch(
       `*[
         (_type == "audioTrack" || _type == "album") &&
@@ -154,11 +142,9 @@ export const handler = async (event) => {
         title,
         "slug": slug.current,
         price,
-        fullDownload,
-        downloadUrls,
         totalFiles,
         "fullDownloadUrl": fullDownload.asset->url,
-        "fullDownloadRef": fullDownload.asset._ref
+        downloadUrls
       }`,
       { slugs: purchasedSlugs }
     );
@@ -170,9 +156,50 @@ export const handler = async (event) => {
       });
     }
 
+    // Replace real file URLs with proxy URLs
     const orderedDownloads = purchasedSlugs
       .map((slug) => sanityProducts.find((p) => p.slug === slug))
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((item) => {
+        if (item._type === "audioTrack") {
+          const hasFile = Boolean(item.fullDownloadUrl);
+          return {
+            _id: item._id,
+            _type: item._type,
+            title: item.title,
+            slug: item.slug,
+            price: item.price,
+            totalFiles: item.totalFiles,
+            // Proxy only — no Sanity CDN URL
+            fullDownloadUrl: hasFile
+              ? proxyUrl(transactionId, item.slug)
+              : null,
+            downloadUrls: null,
+          };
+        }
+
+        if (item._type === "album") {
+          const rawUrls = Array.isArray(item.downloadUrls)
+            ? item.downloadUrls.map((u) => String(u).trim()).filter(Boolean)
+            : [];
+
+          return {
+            _id: item._id,
+            _type: item._type,
+            title: item.title,
+            slug: item.slug,
+            price: item.price,
+            totalFiles: item.totalFiles || rawUrls.length,
+            fullDownloadUrl: null,
+            // One proxy link per pack file
+            downloadUrls: rawUrls.map((_, index) =>
+              proxyUrl(transactionId, item.slug, index)
+            ),
+          };
+        }
+
+        return item;
+      });
 
     if (orderedDownloads.length === 0) {
       return json(404, {

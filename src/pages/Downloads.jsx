@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+function isProxyDownloadUrl(url) {
+  return (
+    typeof url === "string" &&
+    url.includes("/.netlify/functions/download-file")
+  );
+}
+
 export default function Downloads() {
   const [downloads, setDownloads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,12 +175,12 @@ export default function Downloads() {
         {downloads.map((item) => {
           // ---------- AUDIO TRACK ----------
           if (item._type === "audioTrack") {
-            let url =
+            // Prefer proxy URL from get-downloads (secure).
+            // Do NOT append ?dl — download-file handles that server-side.
+            const url =
               item.fullDownloadUrl ||
               item.fullDownload?.asset?.url ||
               null;
-
-            if (url) url = `${url}?dl`;
 
             if (!url) {
               return (
@@ -244,16 +251,21 @@ export default function Downloads() {
 
                 <div className="flex flex-col gap-3">
                   {urls.map((url, index) => {
+                    // Proxy URLs don't contain the real filename — use part labels.
+                    // Fallback: try to parse filename only for non-proxy URLs.
                     let label = `Download Part ${index + 1}`;
-                    try {
-                      const filename = decodeURIComponent(
-                        url.split("/").pop() || ""
-                      );
-                      if (filename) {
-                        label = filename.replace(/\.zip$/i, "");
+
+                    if (!isProxyDownloadUrl(url)) {
+                      try {
+                        const filename = decodeURIComponent(
+                          url.split("/").pop() || ""
+                        );
+                        if (filename) {
+                          label = filename.replace(/\.zip$/i, "");
+                        }
+                      } catch {
+                        // keep default
                       }
-                    } catch {
-                      // keep default
                     }
 
                     return (
