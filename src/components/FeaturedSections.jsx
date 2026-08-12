@@ -36,7 +36,7 @@ export default function FeaturedSections() {
     <section className="bg-adinkra-bg py-20 px-4">
       <div className="max-w-screen-xl mx-auto">
 
-        {/* 🔥 NEW TITLE */}
+        {/* TITLE */}
         <h2 className="text-3xl md:text-4xl font-bold mb-12 text-adinkra-gold text-center">
           What We Do
         </h2>
@@ -72,7 +72,7 @@ export default function FeaturedSections() {
 
                 {/* CTA */}
                 <Link
-                  to="/contact"
+                  to="/submit-project"
                   className="mt-4 text-sm bg-adinkra-highlight text-adinkra-bg font-semibold py-2 px-4 rounded hover:bg-yellow-500 transition-all text-center inline-block w-max"
                 >
                   Start a Project →

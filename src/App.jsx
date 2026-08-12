@@ -13,12 +13,9 @@ import BackgroundAudioPlayer from "./components/BackgroundAudioPlayer";
 
 // Pages
 import Home from "./pages/Home";
-import Audio from "./pages/Audio";
-import AudioItemPage from "./pages/AudioItemPage";
 import Downloads from "./pages/Downloads";
-
-import HouseOfAusar from "./pages/HouseOfAusar";
-import HouseArticle from "./pages/HouseArticle";
+import SubmitProject from "./pages/SubmitProject";
+import About from "./pages/About";               // ← changed from Contact
 
 import AdinkraGallery from "./pages/AdinkraGallery";
 
@@ -28,8 +25,6 @@ import PremiumVideo from "./pages/PremiumVideo";
 
 import UploadTrack from "./pages/UploadTrack";
 import CreateAlbum from "./pages/CreateAlbum";
-
-import Contact from "./pages/Contact";
 
 // Contributor
 import ContributorPage from "./pages/ContributorPage";
@@ -64,154 +59,56 @@ export default function App() {
         <div className="min-h-screen flex flex-col bg-adinkra-bg text-adinkra-gold relative">
 
           <AnalyticsTracker />
-
           <Header />
-
           <BackgroundAudioPlayer />
 
           <main className="flex-1 relative pt-20">
             <Routes>
 
               {/* HOME */}
+              <Route path="/" element={<Home />} />
 
-              <Route
-                path="/"
-                element={<Home />}
-              />
+              {/* DOWNLOADS */}
+              <Route path="/downloads" element={<Downloads />} />
 
-              {/* AUDIO */}
+              {/* SUBMIT PROJECT */}
+              <Route path="/submit-project" element={<SubmitProject />} />
 
-              <Route
-                path="/audio"
-                element={<Audio />}
-              />
-
-              <Route
-                path="/audio/:slug"
-                element={<AudioItemPage />}
-              />
-
-              <Route
-                path="/downloads"
-                element={<Downloads />}
-              />
+              {/* ABOUT */}
+              <Route path="/about" element={<About />} />
 
               {/* CONTRIBUTORS */}
-
-              <Route
-                path="/contributor/:slug"
-                element={<ContributorPage />}
-              />
-
-              <Route
-                path="/dashboard"
-                element={<ContributorDashboard />}
-              />
-
-              <Route
-                path="/dashboard/upload-track"
-                element={<UploadTrack />}
-              />
-
-              <Route
-                path="/dashboard/create-album"
-                element={<CreateAlbum />}
-              />
+              <Route path="/contributor/:slug" element={<ContributorPage />} />
+              <Route path="/dashboard" element={<ContributorDashboard />} />
+              <Route path="/dashboard/upload-track" element={<UploadTrack />} />
+              <Route path="/dashboard/create-album" element={<CreateAlbum />} />
 
               {/* ADMIN MODERATION */}
-
-              <Route
-                path="/admin/moderation"
-                element={<AdminModeration />}
-              />
-
-              {/* HOUSE OF AUSAR */}
-
-              <Route
-                path="/house-of-ausar"
-                element={<HouseOfAusar />}
-              />
-
-              <Route
-                path="/house-article/:id"
-                element={<HouseArticle />}
-              />
-
-              <Route
-                path="/house/:id"
-                element={<HouseArticle />}
-              />
+              <Route path="/admin/moderation" element={<AdminModeration />} />
 
               {/* GALLERY */}
-
-              <Route
-                path="/gallery"
-                element={<AdinkraGallery />}
-              />
+              <Route path="/gallery" element={<AdinkraGallery />} />
 
               {/* TV */}
-
-              <Route
-                path="/tv-video/:id"
-                element={<TVVideoPage />}
-              />
-
-              <Route
-                path="/premium-tv"
-                element={<PremiumTV />}
-              />
-
-              <Route
-                path="/premium-tv/:id"
-                element={<PremiumVideo />}
-              />
+              <Route path="/tv-video/:id" element={<TVVideoPage />} />
+              <Route path="/premium-tv" element={<PremiumTV />} />
+              <Route path="/premium-tv/:id" element={<PremiumVideo />} />
 
               {/* GAMES */}
-
-              <Route
-                path="/games"
-                element={<Games />}
-              />
-
-              <Route
-                path="/games/morabaraba"
-                element={<MorabarabaGame />}
-              />
-
-              {/* CONTACT */}
-
-              <Route
-                path="/contact"
-                element={<Contact />}
-              />
+              <Route path="/games" element={<Games />} />
+              <Route path="/games/morabaraba" element={<MorabarabaGame />} />
 
               {/* LEGAL */}
-
-              <Route
-                path="/terms"
-                element={<Terms />}
-              />
-
-              <Route
-                path="/privacy"
-                element={<Privacy />}
-              />
-
-              <Route
-                path="/refunds"
-                element={<Refunds />}
-              />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/refunds" element={<Refunds />} />
 
               {/* 404 */}
-
               <Route
                 path="*"
                 element={
                   <div className="py-32 text-center">
-                    <h1 className="text-4xl font-bold text-adinkra-highlight">
-                      404
-                    </h1>
-
+                    <h1 className="text-4xl font-bold text-adinkra-highlight">404</h1>
                     <p className="mt-3 text-adinkra-gold/60">
                       The page you're looking for doesn't exist.
                     </p>

@@ -16,7 +16,7 @@
         "npm:@contentful/rich-text-types@^17.1.0",
         "npm:@paypal/react-paypal-js@^9.0.1",
         "npm:@sanity/client@^7.20.0",
-        "npm:@supabase/supabase-js@^2.52.1",
+        "npm:@supabase/supabase-js@^2.112.3",
         "npm:@tailwindcss/line-clamp@~0.4.4",
         "npm:@vitejs/plugin-react@4",
         "npm:autoprefixer@^10.4.19",

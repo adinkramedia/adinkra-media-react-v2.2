@@ -5,11 +5,11 @@ import { FiMenu, FiX } from "react-icons/fi";
 import {
   Activity,
   Home,
-  Music2,
   Film,
-  Mail,
+  Info,
   Music,
-  Settings
+  Settings,
+  Upload,
 } from "lucide-react";
 
 import { useAuth0 } from "@auth0/auth0-react";
@@ -26,7 +26,6 @@ export default function Header() {
   const {
     isAuthenticated,
     isLoading,
-    user
   } = useAuth0();
 
   return (
@@ -34,9 +33,14 @@ export default function Header() {
 
       <div className="w-full flex items-center justify-between px-6 py-4">
 
-        {/* Logo */}
+        {/* =================================================
+            LOGO
+        ================================================= */}
 
-        <Link to="/" className="flex items-center gap-2">
+        <Link
+          to="/"
+          className="flex items-center gap-2"
+        >
           <Activity className="w-10 h-10 text-adinkra-gold" />
 
           <span className="text-sm font-semibold hidden md:inline">
@@ -44,52 +48,77 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Desktop */}
+
+        {/* =================================================
+            DESKTOP NAVIGATION
+        ================================================= */}
 
         <div className="hidden md:flex items-center gap-8">
 
-          <nav className="flex space-x-8 text-sm">
+          <nav className="flex items-center space-x-8 text-sm">
+
+            {/* HOME */}
 
             <Link
               to="/"
               className="hover:text-adinkra-highlight transition-colors"
+              title="Home"
             >
               <Home className="w-6 h-6" />
             </Link>
 
-            <Link
-              to="/audio"
-              className="hover:text-adinkra-highlight transition-colors"
-            >
-              <Music2 className="w-6 h-6" />
-            </Link>
+
+            {/* GALLERY */}
 
             <Link
               to="/gallery"
               className="hover:text-adinkra-highlight transition-colors"
+              title="Gallery"
             >
               <Film className="w-6 h-6" />
             </Link>
 
+
+            {/* ABOUT */}
+
             <Link
-              to="/contact"
+              to="/about"
               className="hover:text-adinkra-highlight transition-colors"
+              title="About"
             >
-              <Mail className="w-6 h-6" />
+              <Info className="w-6 h-6" />
+            </Link>
+
+
+            {/* SUBMIT PROJECT */}
+
+            <Link
+              to="/submit-project"
+              className="hover:text-adinkra-highlight transition-colors"
+              title="Submit Project"
+            >
+              <Upload className="w-6 h-6" />
             </Link>
 
           </nav>
 
-          {/* Audio Player */}
+
+          {/* =================================================
+              AUDIO PLAYER
+          ================================================= */}
 
           <button
             onClick={() => setIsPlayerOpen(true)}
             className="p-2 rounded-full bg-adinkra-highlight/20 hover:bg-adinkra-highlight/40 transition"
+            title="Open Audio Player"
           >
             <Music className="w-6 h-6" />
           </button>
 
-          {/* Studio */}
+
+          {/* =================================================
+              STUDIO
+          ================================================= */}
 
           {!isLoading && isAuthenticated && (
             <button
@@ -101,37 +130,64 @@ export default function Header() {
             </button>
           )}
 
+
+          {/* =================================================
+              AUTH
+          ================================================= */}
+
           <AuthButton />
 
         </div>
 
-        {/* Mobile */}
+
+        {/* =================================================
+            MOBILE CONTROLS
+        ================================================= */}
 
         <div className="md:hidden flex items-center gap-4">
+
+          {/* AUDIO PLAYER */}
 
           <button
             onClick={() => setIsPlayerOpen(true)}
             className="p-2 rounded-full bg-adinkra-highlight/20"
+            title="Open Audio Player"
           >
             <Music className="w-6 h-6" />
           </button>
 
+
+          {/* MENU */}
+
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="text-2xl"
+            aria-label={
+              menuOpen
+                ? "Close menu"
+                : "Open menu"
+            }
           >
-            {menuOpen ? <FiX /> : <FiMenu />}
+            {menuOpen ? (
+              <FiX />
+            ) : (
+              <FiMenu />
+            )}
           </button>
 
         </div>
 
       </div>
 
-      {/* Mobile Menu */}
+
+      {/* =================================================
+          MOBILE MENU
+      ================================================= */}
 
       {menuOpen && (
-
         <div className="md:hidden bg-adinkra-card px-6 py-6 space-y-6 text-center">
+
+          {/* HOME */}
 
           <Link
             to="/"
@@ -142,14 +198,8 @@ export default function Header() {
             Home
           </Link>
 
-          <Link
-            to="/audio"
-            onClick={() => setMenuOpen(false)}
-            className="flex justify-center items-center gap-3"
-          >
-            <Music2 className="w-6 h-6" />
-            Audio Store
-          </Link>
+
+          {/* GALLERY */}
 
           <Link
             to="/gallery"
@@ -160,14 +210,32 @@ export default function Header() {
             Gallery
           </Link>
 
+
+          {/* ABOUT */}
+
           <Link
-            to="/contact"
+            to="/about"
             onClick={() => setMenuOpen(false)}
             className="flex justify-center items-center gap-3"
           >
-            <Mail className="w-6 h-6" />
-            Contact
+            <Info className="w-6 h-6" />
+            About
           </Link>
+
+
+          {/* SUBMIT PROJECT */}
+
+          <Link
+            to="/submit-project"
+            onClick={() => setMenuOpen(false)}
+            className="flex justify-center items-center gap-3"
+          >
+            <Upload className="w-6 h-6" />
+            Submit Project
+          </Link>
+
+
+          {/* STUDIO */}
 
           {!isLoading && isAuthenticated && (
             <button
@@ -182,12 +250,14 @@ export default function Header() {
             </button>
           )}
 
+
+          {/* AUTH */}
+
           <div className="pt-6 border-t border-adinkra-highlight">
             <AuthButton />
           </div>
 
         </div>
-
       )}
 
     </header>
