@@ -29,25 +29,6 @@ const principles = [
   },
 ];
 
-const studioImages = [
-  {
-    src: "/studio-image.webp",
-    alt: "Adinkra Media studio",
-  },
-  {
-    src: "/studio-image-2.webp",
-    alt: "Adinkra Media production studio",
-  },
-  {
-    src: "/studio-image-3.webp",
-    alt: "Adinkra Media audio production setup",
-  },
-  {
-    src: "/studio-image-4.webp",
-    alt: "Adinkra Media recording and production environment",
-  },
-];
-
 export default function About() {
   return (
     <section className="bg-adinkra-bg text-adinkra-gold py-20 md:py-28 px-6 w-full">
@@ -101,58 +82,8 @@ export default function About() {
           ))}
         </div>
 
-        {/* STUDIO / PRODUCTION GALLERY */}
-        <div className="mt-24">
-          {/* SECTION INTRO */}
-          <div className="max-w-3xl mx-auto text-center mb-10 md:mb-12">
-            <p className="text-sm tracking-[0.3em] uppercase text-adinkra-gold/60 mb-4">
-              Inside the Work
-            </p>
-
-            <h2 className="text-3xl md:text-4xl font-bold mb-5">
-              Where the Sound Takes Shape
-            </h2>
-
-            <p className="text-base md:text-lg leading-relaxed text-adinkra-gold/70">
-              From our studio environment to the production process, our work
-              is built around the tools, spaces, and creative decisions that
-              shape the final sound.
-            </p>
-          </div>
-
-          {/* FEATURED STUDIO IMAGE */}
-          <div className="overflow-hidden rounded-2xl md:rounded-3xl">
-            <div className="aspect-[16/10] w-full">
-              <img
-                src={studioImages[0].src}
-                alt={studioImages[0].alt}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.02]"
-              />
-            </div>
-          </div>
-
-          {/* SUPPORTING IMAGES */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
-            {studioImages.slice(1).map((image) => (
-              <div key={image.src} className="overflow-hidden rounded-2xl">
-                <div className="aspect-[16/10] w-full">
-                  <img
-                    src={image.src}
-                    alt={image.alt}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.03]"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* CLOSING STATEMENT */}
-        <div className="max-w-4xl mx-auto text-center mt-20 md:mt-24">
+        <div className="max-w-4xl mx-auto text-center mt-16">
           <p className="text-lg md:text-xl leading-relaxed text-adinkra-gold/80">
             Whether we are supporting a single production requirement or
             contributing across an entire project, our goal remains the same:

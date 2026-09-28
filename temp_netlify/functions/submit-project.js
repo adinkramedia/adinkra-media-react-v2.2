@@ -1,13 +1,12 @@
-import { createClient } from "@supabase/supabase-js";
+// netlify/functions/submit-project.js
 
 // =========================================================
-// SUPABASE
+// PROJECT SUBMISSION — ADINKRA MEDIA
+// Sends project enquiries directly to sales@adinkramedia.com
+// No Supabase required.
 // =========================================================
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import nodemailer from "nodemailer";
 
 // =========================================================
 // RESPONSE HELPER
@@ -16,14 +15,12 @@ const supabase = createClient(
 const jsonResponse = (statusCode, body) => {
   return {
     statusCode,
-
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
     },
-
     body: JSON.stringify(body),
   };
 };
@@ -36,14 +33,8 @@ const generateSubmissionId = () => {
   const now = new Date();
 
   const year = now.getUTCFullYear();
-
-  const month = String(
-    now.getUTCMonth() + 1
-  ).padStart(2, "0");
-
-  const day = String(
-    now.getUTCDate()
-  ).padStart(2, "0");
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(now.getUTCDate()).padStart(2, "0");
 
   const random = Math.random()
     .toString(36)
@@ -51,6 +42,19 @@ const generateSubmissionId = () => {
     .toUpperCase();
 
   return `ADM-${year}${month}${day}-${random}`;
+};
+
+// =========================================================
+// ESCAPE HTML
+// =========================================================
+
+const escapeHtml = (value) => {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 };
 
 // =========================================================
@@ -79,21 +83,17 @@ export const handler = async (event) => {
 
   try {
     // =====================================================
-    // CHECK SUPABASE CONFIGURATION
+    // CHECK EMAIL CONFIGURATION
     // =====================================================
 
-    if (
-      !process.env.SUPABASE_URL ||
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
-    ) {
+    if (!process.env.ZOHO_SMTP_USER || !process.env.ZOHO_SMTP_PASSWORD) {
       console.error(
-        "[submit-project] Missing Supabase environment variables."
+        "[submit-project] Missing Zoho SMTP environment variables."
       );
 
       return jsonResponse(500, {
         success: false,
-        error:
-          "Server configuration is incomplete.",
+        error: "Server configuration is incomplete.",
       });
     }
 
@@ -106,118 +106,48 @@ export const handler = async (event) => {
     try {
       body = JSON.parse(event.body || "{}");
     } catch (parseError) {
-      console.error(
-        "[submit-project] Invalid JSON:",
-        parseError
-      );
+      console.error("[submit-project] Invalid JSON:", parseError);
 
       return jsonResponse(400, {
         success: false,
-        error:
-          "Invalid project submission data.",
+        error: "Invalid project submission data.",
       });
     }
-
-    console.log(
-      "[submit-project] Received fields:",
-      Object.keys(body)
-    );
 
     // =====================================================
     // EXTRACT FIELDS
     // =====================================================
 
-    const name =
-      typeof body.name === "string"
-        ? body.name.trim()
-        : "";
-
+    const name = typeof body.name === "string" ? body.name.trim() : "";
     const company =
-      typeof body.company === "string"
-        ? body.company.trim()
-        : "";
-
-    const email =
-      typeof body.email === "string"
-        ? body.email.trim()
-        : "";
-
-    const phone =
-      typeof body.phone === "string"
-        ? body.phone.trim()
-        : "";
-
+      typeof body.company === "string" ? body.company.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const phone = typeof body.phone === "string" ? body.phone.trim() : "";
     const projectName =
-      typeof body.projectName === "string"
-        ? body.projectName.trim()
-        : "";
-
+      typeof body.projectName === "string" ? body.projectName.trim() : "";
     const projectType =
-      typeof body.projectType === "string"
-        ? body.projectType.trim()
-        : "";
-
+      typeof body.projectType === "string" ? body.projectType.trim() : "";
     const description =
-      typeof body.description === "string"
-        ? body.description.trim()
-        : "";
-
-    const budget =
-      typeof body.budget === "string"
-        ? body.budget.trim()
-        : "";
-
+      typeof body.description === "string" ? body.description.trim() : "";
+    const budget = typeof body.budget === "string" ? body.budget.trim() : "";
     const deadline =
-      typeof body.deadline === "string"
-        ? body.deadline.trim()
-        : "";
-
+      typeof body.deadline === "string" ? body.deadline.trim() : "";
     const referenceLinks =
       typeof body.referenceLinks === "string"
         ? body.referenceLinks.trim()
         : "";
-
-    const notes =
-      typeof body.notes === "string"
-        ? body.notes.trim()
-        : "";
+    const notes = typeof body.notes === "string" ? body.notes.trim() : "";
 
     // =====================================================
     // SERVICES
     // =====================================================
 
-    const services = Array.isArray(
-      body.services
-    )
+    const services = Array.isArray(body.services)
       ? body.services
-          .filter(
-            (service) =>
-              typeof service === "string"
-          )
-          .map((service) =>
-            service.trim()
-          )
+          .filter((service) => typeof service === "string")
+          .map((service) => service.trim())
           .filter(Boolean)
       : [];
-
-    // =====================================================
-    // LOG IMPORTANT VALUES
-    // =====================================================
-
-    console.log(
-      "[submit-project] Project:",
-      projectName
-    );
-
-    console.log(
-      "[submit-project] Project type:",
-      projectType
-    );
-
-    console.log(
-      "[submit-project] Services:",
-      services
-    );
 
     // =====================================================
     // VALIDATION
@@ -240,32 +170,28 @@ export const handler = async (event) => {
     if (!projectName) {
       return jsonResponse(400, {
         success: false,
-        error:
-          "Project name is required.",
+        error: "Project name is required.",
       });
     }
 
     if (!projectType) {
       return jsonResponse(400, {
         success: false,
-        error:
-          "Project type is required.",
+        error: "Project type is required.",
       });
     }
 
     if (!description) {
       return jsonResponse(400, {
         success: false,
-        error:
-          "Project description is required.",
+        error: "Project description is required.",
       });
     }
 
     if (services.length === 0) {
       return jsonResponse(400, {
         success: false,
-        error:
-          "Please select at least one service.",
+        error: "Please select at least one service.",
       });
     }
 
@@ -273,14 +199,12 @@ export const handler = async (event) => {
     // EMAIL VALIDATION
     // =====================================================
 
-    const emailPattern =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(email)) {
       return jsonResponse(400, {
         success: false,
-        error:
-          "Please provide a valid email address.",
+        error: "Please provide a valid email address.",
       });
     }
 
@@ -288,23 +212,15 @@ export const handler = async (event) => {
     // DEADLINE VALIDATION
     // =====================================================
 
-    let validDeadline = null;
+    let validDeadline = "";
 
     if (deadline) {
-      const deadlineDate =
-        new Date(
-          `${deadline}T00:00:00Z`
-        );
+      const deadlineDate = new Date(`${deadline}T00:00:00Z`);
 
-      if (
-        Number.isNaN(
-          deadlineDate.getTime()
-        )
-      ) {
+      if (Number.isNaN(deadlineDate.getTime())) {
         return jsonResponse(400, {
           success: false,
-          error:
-            "Please provide a valid deadline.",
+          error: "Please provide a valid deadline.",
         });
       }
 
@@ -315,115 +231,290 @@ export const handler = async (event) => {
     // GENERATE SUBMISSION ID
     // =====================================================
 
-    const submissionId =
-      generateSubmissionId();
+    const submissionId = generateSubmissionId();
 
-    console.log(
-      "[submit-project] New submission:",
-      submissionId
-    );
+    console.log("[submit-project] New submission:", submissionId);
 
     // =====================================================
-    // INSERT INTO SUPABASE
+    // EMAIL CONFIGURATION
     // =====================================================
 
-    const { data, error } =
-      await supabase
-        .from("project_submissions")
-        .insert([
-          {
-            submission_id:
-              submissionId,
+    const smtpHost = process.env.ZOHO_SMTP_HOST || "smtp.zoho.com";
+    const smtpPort = Number(process.env.ZOHO_SMTP_PORT || 465);
 
-            name,
-
-            company:
-              company || null,
-
-            email,
-
-            phone:
-              phone || null,
-
-            project_name:
-              projectName,
-
-            project_type:
-              projectType,
-
-            services,
-
-            description,
-
-            budget:
-              budget || null,
-
-            deadline:
-              validDeadline,
-
-            reference_links:
-              referenceLinks ||
-              null,
-
-            notes:
-              notes || null,
-
-            status: "new",
-          },
-        ])
-        .select(
-          "id, submission_id, created_at"
-        )
-        .single();
+    const fromEmail = process.env.ZOHO_SMTP_USER;
+    const toEmail =
+      process.env.PROJECT_EMAIL_TO || "sales@adinkramedia.com";
 
     // =====================================================
-    // DATABASE ERROR
+    // EMAIL SUBJECT
     // =====================================================
 
-    if (error) {
-      console.error(
-        "[submit-project] Supabase insert error:",
-        error
-      );
+    const subject = `New Project Enquiry — ${projectName} — ${submissionId}`;
 
-      return jsonResponse(500, {
-        success: false,
-        error:
-          "We were unable to save your project submission. Please try again.",
-      });
-    }
+    // =====================================================
+    // PLAIN TEXT EMAIL
+    // =====================================================
+
+    const text = `
+ADINKRA MEDIA — NEW PROJECT ENQUIRY
+
+Submission ID:
+${submissionId}
+
+==================================================
+CONTACT INFORMATION
+==================================================
+
+Name:
+${name}
+
+Company:
+${company || "Not provided"}
+
+Email:
+${email}
+
+Phone / WhatsApp:
+${phone || "Not provided"}
+
+
+==================================================
+PROJECT INFORMATION
+==================================================
+
+Project Name:
+${projectName}
+
+Project Type:
+${projectType}
+
+Services Required:
+${services.join(", ")}
+
+
+==================================================
+PROJECT DESCRIPTION
+==================================================
+
+${description}
+
+
+==================================================
+BUDGET & TIMELINE
+==================================================
+
+Budget:
+${budget || "Not provided"}
+
+Deadline:
+${validDeadline || "Not provided"}
+
+
+==================================================
+REFERENCES
+==================================================
+
+${referenceLinks || "No reference links provided."}
+
+
+==================================================
+ADDITIONAL NOTES
+==================================================
+
+${notes || "No additional notes provided."}
+
+
+==================================================
+
+Submitted through:
+adinkramedia.com
+
+Submission ID:
+${submissionId}
+`;
+
+    // =====================================================
+    // HTML EMAIL
+    // =====================================================
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>${escapeHtml(subject)}</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif;color:#222;">
+
+  <div style="max-width:760px;margin:30px auto;background:#ffffff;border-radius:10px;overflow:hidden;">
+
+    <div style="background:#194138;padding:28px 32px;color:#fbe5b6;">
+      <h1 style="margin:0;font-size:24px;">
+        New Project Enquiry
+      </h1>
+
+      <p style="margin:8px 0 0;font-size:14px;">
+        Adinkra Media Pty Ltd
+      </p>
+    </div>
+
+    <div style="padding:32px;">
+
+      <div style="background:#f7f3e8;padding:16px 20px;border-radius:8px;margin-bottom:28px;">
+        <strong>Submission ID:</strong>
+        ${escapeHtml(submissionId)}
+      </div>
+
+      <h2 style="font-size:18px;color:#194138;">
+        Contact Information
+      </h2>
+
+      <p>
+        <strong>Name:</strong><br />
+        ${escapeHtml(name)}
+      </p>
+
+      <p>
+        <strong>Company:</strong><br />
+        ${escapeHtml(company || "Not provided")}
+      </p>
+
+      <p>
+        <strong>Email:</strong><br />
+        <a href="mailto:${escapeHtml(email)}">
+          ${escapeHtml(email)}
+        </a>
+      </p>
+
+      <p>
+        <strong>Phone / WhatsApp:</strong><br />
+        ${escapeHtml(phone || "Not provided")}
+      </p>
+
+      <hr style="border:0;border-top:1px solid #ddd;margin:28px 0;" />
+
+      <h2 style="font-size:18px;color:#194138;">
+        Project Information
+      </h2>
+
+      <p>
+        <strong>Project Name:</strong><br />
+        ${escapeHtml(projectName)}
+      </p>
+
+      <p>
+        <strong>Project Type:</strong><br />
+        ${escapeHtml(projectType)}
+      </p>
+
+      <p>
+        <strong>Services Required:</strong><br />
+        ${escapeHtml(services.join(", "))}
+      </p>
+
+      <p>
+        <strong>Project Description:</strong><br />
+        ${escapeHtml(description).replace(/\n/g, "<br />")}
+      </p>
+
+      <hr style="border:0;border-top:1px solid #ddd;margin:28px 0;" />
+
+      <h2 style="font-size:18px;color:#194138;">
+        Budget &amp; Timeline
+      </h2>
+
+      <p>
+        <strong>Budget:</strong><br />
+        ${escapeHtml(budget || "Not provided")}
+      </p>
+
+      <p>
+        <strong>Deadline:</strong><br />
+        ${escapeHtml(validDeadline || "Not provided")}
+      </p>
+
+      <hr style="border:0;border-top:1px solid #ddd;margin:28px 0;" />
+
+      <h2 style="font-size:18px;color:#194138;">
+        References
+      </h2>
+
+      <p>
+        ${escapeHtml(
+          referenceLinks || "No reference links provided."
+        ).replace(/\n/g, "<br />")}
+      </p>
+
+      <h2 style="font-size:18px;color:#194138;margin-top:28px;">
+        Additional Notes
+      </h2>
+
+      <p>
+        ${escapeHtml(
+          notes || "No additional notes provided."
+        ).replace(/\n/g, "<br />")}
+      </p>
+
+      <div style="margin-top:35px;padding-top:20px;border-top:1px solid #ddd;font-size:12px;color:#777;">
+        Submitted through adinkramedia.com<br />
+        Submission ID: ${escapeHtml(submissionId)}
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
+`;
+
+    // =====================================================
+    // CREATE SMTP TRANSPORT
+    // =====================================================
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: fromEmail,
+        pass: process.env.ZOHO_SMTP_PASSWORD,
+      },
+    });
+
+    // =====================================================
+    // SEND EMAIL
+    // =====================================================
+
+    await transporter.sendMail({
+      from: `"Adinkra Media Website" <${fromEmail}>`,
+      to: toEmail,
+      replyTo: email,
+      subject,
+      text,
+      html,
+    });
 
     // =====================================================
     // SUCCESS
     // =====================================================
 
-    console.log(
-      "[submit-project] Submission saved:",
-      data.submission_id
-    );
+    console.log("[submit-project] Email sent:", submissionId);
 
     return jsonResponse(200, {
       success: true,
-
-      message:
-        "Your project has been submitted successfully.",
-
-      submissionId:
-        data.submission_id,
-
-      createdAt:
-        data.created_at,
+      message: "Your project has been submitted successfully.",
+      submissionId,
+      createdAt: new Date().toISOString(),
     });
-
   } catch (error) {
     // =====================================================
     // UNEXPECTED ERROR
     // =====================================================
 
-    console.error(
-      "[submit-project] Unexpected error:",
-      error
-    );
+    console.error("[submit-project] Unexpected error:", error);
 
     return jsonResponse(500, {
       success: false,
