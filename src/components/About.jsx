@@ -1,194 +1,165 @@
-import React from "react";
-import {
-  Library,
-  Tv,
-  Ticket,
-  FlaskConical,
-  ArrowUpRight,
-} from "lucide-react";
+// About.jsx
 
-const ecosystem = [
+import React from "react";
+
+const principles = [
   {
-    name: "Adinkra Library",
-    label: "AUDIO",
+    number: "01",
+    title: "Built for the Story",
     description:
-      "Professional music, sound design and audio assets for film, games, video and digital experiences.",
-    href: "https://audio.adinkramedia.com/",
-    icon: Library,
+      "We approach every project from the creative intent first. Sound should not simply sit underneath an image — it should help shape the atmosphere, emotion, rhythm, and identity of the work.",
   },
   {
-    name: "Adinkra TV",
-    label: "MEDIA",
+    number: "02",
+    title: "From Concept to Delivery",
     description:
-      "African stories, documentaries, news and original television programming.",
-    href: "https://tv.adinkramedia.com/",
-    icon: Tv,
+      "We can become part of a project at any stage, from early creative development and music direction through recording, editing, sound design, mixing, mastering, and final delivery.",
   },
   {
-    name: "Ticketa",
-    label: "EVENTS",
+    number: "03",
+    title: "Detail Matters",
     description:
-      "Event technology that connects organisers, audiences and tickets in one place.",
-    href: "https://ticketa.adinkramedia.com/",
-    icon: Ticket,
+      "Great audio is often found in the details. Dialogue, ambience, transitions, textures, dynamics, space, and subtle sonic elements all contribute to how an audience experiences a production.",
   },
   {
-    name: "Adinkra Lab",
-    label: "EXPERIMENTAL",
+    number: "04",
+    title: "Made for the Medium",
     description:
-      "Creative technology, experimental projects and new ideas being developed at Adinkra.",
-    href: "https://lab.adinkramedia.com/",
-    icon: FlaskConical,
+      "Film, advertising, television, games, broadcast, and digital media all have different technical and creative requirements. We shape our approach around the platform, audience, and intended experience.",
+  },
+];
+
+const studioImages = [
+  {
+    src: "/studio-image.webp",
+    alt: "Adinkra Media studio",
+  },
+  {
+    src: "/studio-image-2.webp",
+    alt: "Adinkra Media production studio",
+  },
+  {
+    src: "/studio-image-3.webp",
+    alt: "Adinkra Media audio production setup",
+  },
+  {
+    src: "/studio-image-4.webp",
+    alt: "Adinkra Media recording and production environment",
   },
 ];
 
 export default function About() {
   return (
-    <section className="bg-adinkra-bg text-adinkra-gold py-16 px-6 w-full">
+    <section className="bg-adinkra-bg text-adinkra-gold py-20 md:py-28 px-6 w-full">
       <div className="max-w-screen-xl mx-auto">
+        {/* INTRODUCTION */}
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-sm tracking-[0.3em] uppercase text-adinkra-gold/60 mb-4">
+            Our Approach
+          </p>
 
-        {/* ABOUT */}
-        <div className="text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-5">
-            About Adinkra Media
+          <h2 className="text-3xl md:text-5xl font-bold mb-6">
+            Sound With Purpose
           </h2>
 
-          <p className="max-w-3xl mx-auto text-lg leading-relaxed text-adinkra-gold/90">
-            Adinkra Media is a professional audio production and creative
-            media company specializing in original music, sound design,
-            sonic storytelling and digital experiences.
+          <p className="text-lg md:text-xl leading-relaxed text-adinkra-gold/85 mb-6">
+            At Adinkra Media, we believe sound is part of the storytelling
+            process from the very beginning. The right music, texture,
+            performance, silence, or sonic detail can change how an audience
+            experiences a scene, a brand, a character, or an entire production.
           </p>
 
-          <p className="max-w-3xl mx-auto text-lg leading-relaxed text-adinkra-gold/80 mt-4">
-            From cinematic compositions and immersive soundscapes to
-            television, events and experimental technology, we build
-            creative experiences that connect sound, culture and story.
+          <p className="text-base md:text-lg leading-relaxed text-adinkra-gold/70">
+            Our work combines creative thinking with technical precision.
+            We take the time to understand the project, its objectives, its
+            audience, and the world it is trying to create. From there, we
+            develop an audio approach that feels considered, cohesive, and
+            purposeful rather than simply adding sound at the end of the
+            process.
           </p>
         </div>
 
-        {/* ECOSYSTEM */}
-        <div className="mt-16">
+        {/* PRINCIPLES */}
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {principles.map((principle) => (
+            <div
+              key={principle.number}
+              className="border border-adinkra-gold/15 rounded-2xl p-7 md:p-8 bg-adinkra-gold/[0.03] hover:border-adinkra-gold/30 transition-colors"
+            >
+              <p className="text-xs tracking-[0.25em] uppercase text-adinkra-gold/50 mb-4">
+                {principle.number}
+              </p>
 
-          <div className="text-center mb-10">
-            <p className="text-sm tracking-[0.3em] uppercase text-adinkra-gold/60 mb-3">
-              The Adinkra Ecosystem
+              <h3 className="text-xl md:text-2xl font-bold mb-3">
+                {principle.title}
+              </h3>
+
+              <p className="text-sm md:text-base leading-relaxed text-adinkra-gold/65">
+                {principle.description}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* STUDIO / PRODUCTION GALLERY */}
+        <div className="mt-24">
+          {/* SECTION INTRO */}
+          <div className="max-w-3xl mx-auto text-center mb-10 md:mb-12">
+            <p className="text-sm tracking-[0.3em] uppercase text-adinkra-gold/60 mb-4">
+              Inside the Work
             </p>
 
-            <h3 className="text-2xl md:text-3xl font-bold">
-              More than a studio.
-            </h3>
+            <h2 className="text-3xl md:text-4xl font-bold mb-5">
+              Where the Sound Takes Shape
+            </h2>
 
-            <p className="max-w-2xl mx-auto mt-3 text-adinkra-gold/70">
-              Explore the platforms, products and experiments we're building
-              across media, audio, events and technology.
+            <p className="text-base md:text-lg leading-relaxed text-adinkra-gold/70">
+              From our studio environment to the production process, our work
+              is built around the tools, spaces, and creative decisions that
+              shape the final sound.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* FEATURED STUDIO IMAGE */}
+          <div className="overflow-hidden rounded-2xl md:rounded-3xl">
+            <div className="aspect-[16/10] w-full">
+              <img
+                src={studioImages[0].src}
+                alt={studioImages[0].alt}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.02]"
+              />
+            </div>
+          </div>
 
-            {ecosystem.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="
-                    group
-                    relative
-                    rounded-2xl
-                    border
-                    border-adinkra-gold/15
-                    bg-adinkra-gold/[0.03]
-                    p-6
-                    transition-all
-                    duration-300
-                    hover:-translate-y-1
-                    hover:border-adinkra-gold/40
-                    hover:bg-adinkra-gold/[0.06]
-                  "
-                >
-
-                  {/* ICON */}
-                  <div
-                    className="
-                      w-12
-                      h-12
-                      rounded-xl
-                      flex
-                      items-center
-                      justify-center
-                      border
-                      border-adinkra-gold/20
-                      bg-adinkra-gold/[0.05]
-                      mb-6
-                      transition-all
-                      duration-300
-                      group-hover:border-adinkra-gold/50
-                      group-hover:bg-adinkra-gold/10
-                    "
-                  >
-                    <Icon
-                      size={23}
-                      strokeWidth={1.7}
-                      className="
-                        text-adinkra-gold
-                        transition-transform
-                        duration-300
-                        group-hover:scale-110
-                      "
-                    />
-                  </div>
-
-                  {/* LABEL */}
-                  <p className="text-xs tracking-[0.25em] text-adinkra-gold/50 mb-2">
-                    {item.label}
-                  </p>
-
-                  {/* NAME */}
-                  <h4 className="text-xl font-bold text-adinkra-gold">
-                    {item.name}
-                  </h4>
-
-                  {/* DESCRIPTION */}
-                  <p className="mt-3 text-sm leading-relaxed text-adinkra-gold/65">
-                    {item.description}
-                  </p>
-
-                  {/* ENTER */}
-                  <div
-                    className="
-                      mt-6
-                      flex
-                      items-center
-                      gap-2
-                      text-sm
-                      font-semibold
-                      text-adinkra-gold
-                    "
-                  >
-                    Explore
-
-                    <ArrowUpRight
-                      size={16}
-                      className="
-                        transition-transform
-                        duration-300
-                        group-hover:translate-x-1
-                        group-hover:-translate-y-1
-                      "
-                    />
-                  </div>
-
-                </a>
-              );
-            })}
-
+          {/* SUPPORTING IMAGES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
+            {studioImages.slice(1).map((image) => (
+              <div key={image.src} className="overflow-hidden rounded-2xl">
+                <div className="aspect-[16/10] w-full">
+                  <img
+                    src={image.src}
+                    alt={image.alt}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.03]"
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
+        {/* CLOSING STATEMENT */}
+        <div className="max-w-4xl mx-auto text-center mt-20 md:mt-24">
+          <p className="text-lg md:text-xl leading-relaxed text-adinkra-gold/80">
+            Whether we are supporting a single production requirement or
+            contributing across an entire project, our goal remains the same:
+            to create audio that feels intentional, sounds exceptional, and
+            strengthens the work it belongs to.
+          </p>
+        </div>
       </div>
     </section>
   );
