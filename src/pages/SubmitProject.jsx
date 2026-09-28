@@ -1,3 +1,5 @@
+// SubmitProject.jsx
+
 import { useState } from "react";
 
 const PROJECT_TYPES = [
@@ -58,6 +60,7 @@ export default function SubmitProject() {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+
     setFormData((previous) => ({
       ...previous,
       [name]: value,
@@ -71,6 +74,7 @@ export default function SubmitProject() {
   const handleServiceChange = (service) => {
     setFormData((previous) => {
       const alreadySelected = previous.services.includes(service);
+
       return {
         ...previous,
         services: alreadySelected
@@ -106,67 +110,56 @@ export default function SubmitProject() {
         throw new Error("Please complete all required fields.");
       }
 
-      if (!Array.isArray(formData.services) || formData.services.length === 0) {
+      if (
+        !Array.isArray(formData.services) ||
+        formData.services.length === 0
+      ) {
         throw new Error("Please select at least one service.");
       }
 
       // -----------------------------------------------------
-      // BUILD JSON PAYLOAD
+      // BUILD NETLIFY FORM DATA
       // -----------------------------------------------------
 
-      const payload = {
-        name: formData.name.trim(),
-        company: formData.company.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        projectName: formData.projectName.trim(),
-        projectType: formData.projectType.trim(),
-        services: formData.services,
-        description: formData.description.trim(),
-        budget: formData.budget.trim(),
-        deadline: formData.deadline.trim(),
-        referenceLinks: formData.referenceLinks.trim(),
-        notes: formData.notes.trim(),
-      };
+      const netlifyFormData = new URLSearchParams();
 
-      console.log("[SubmitProject] Submitting project...", payload);
+      netlifyFormData.append("form-name", "project-enquiry");
+      netlifyFormData.append("subject", "New Adinkra Media Project Enquiry");
+
+      netlifyFormData.append("name", formData.name.trim());
+      netlifyFormData.append("company", formData.company.trim());
+      netlifyFormData.append("email", formData.email.trim());
+      netlifyFormData.append("phone", formData.phone.trim());
+
+      netlifyFormData.append("projectName", formData.projectName.trim());
+      netlifyFormData.append("projectType", formData.projectType.trim());
+      netlifyFormData.append("services", formData.services.join(", "));
+      netlifyFormData.append("description", formData.description.trim());
+      netlifyFormData.append("budget", formData.budget.trim());
+      netlifyFormData.append("deadline", formData.deadline.trim());
+      netlifyFormData.append("referenceLinks", formData.referenceLinks.trim());
+      netlifyFormData.append("notes", formData.notes.trim());
+
+      console.log("[SubmitProject] Submitting project enquiry...");
 
       // -----------------------------------------------------
-      // SEND TO NETLIFY FUNCTION
+      // SEND TO NETLIFY FORMS
       // -----------------------------------------------------
 
-      const response = await fetch("/.netlify/functions/submit-project", {
+      const response = await fetch("/__forms.html", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: JSON.stringify(payload),
+        body: netlifyFormData.toString(),
       });
 
-      // -----------------------------------------------------
-      // READ SERVER RESPONSE
-      // -----------------------------------------------------
-
-      const contentType = response.headers.get("content-type") || "";
-      let data = {};
-
-      if (contentType.includes("application/json")) {
-        data = await response.json().catch(() => ({}));
-      } else {
-        const text = await response.text();
-        data = { error: text };
-      }
-
-      console.log("[SubmitProject] Server response:", response.status, data);
+      console.log("[SubmitProject] Netlify response:", response.status);
 
       if (!response.ok) {
         throw new Error(
-          data?.error || data?.message || "Unable to submit your project. Please try again."
+          "Unable to submit your project. Please try again."
         );
-      }
-
-      if (data?.success === false) {
-        throw new Error(data?.error || "Your project could not be submitted.");
       }
 
       // -----------------------------------------------------
@@ -174,15 +167,24 @@ export default function SubmitProject() {
       // -----------------------------------------------------
 
       setSubmitted(true);
-      setFormData({ ...INITIAL_FORM_DATA, services: [] });
+      setFormData({
+        ...INITIAL_FORM_DATA,
+        services: [],
+      });
 
-      // Scroll to success message.
       setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
       }, 100);
     } catch (err) {
       console.error("[SubmitProject] Submission error:", err);
-      setError(err?.message || "Something went wrong while submitting your project. Please try again.");
+
+      setError(
+        err?.message ||
+          "Something went wrong while submitting your project. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -203,15 +205,19 @@ export default function SubmitProject() {
           <span className="inline-block border border-adinkra-gold/30 bg-adinkra-card px-5 py-2 text-sm text-adinkra-highlight">
             Adinkra Media
           </span>
+
           <h1 className="mt-8 font-heading text-5xl font-bold md:text-7xl">
             Submit a Project
           </h1>
+
           <p className="mt-6 text-lg leading-relaxed text-adinkra-gold/80">
-            Need original music, sound design, mixing, mastering, Foley, or other audio production
-            services?
+            Need original music, sound design, mixing, mastering, Foley, or
+            other audio production services?
           </p>
+
           <p className="mt-3 text-lg leading-relaxed text-adinkra-gold/70">
-            Tell us about your project and our team will review your requirements and get back to you.
+            Tell us about your project and our team will review your
+            requirements and get back to you.
           </p>
         </div>
 
@@ -221,10 +227,14 @@ export default function SubmitProject() {
 
         {submitted && (
           <div className="mt-10 border border-green-500/40 bg-green-500/10 px-6 py-6">
-            <h2 className="text-2xl font-bold text-green-400">Project Submitted</h2>
+            <h2 className="text-2xl font-bold text-green-400">
+              Project Submitted
+            </h2>
+
             <p className="mt-3 text-adinkra-gold/80">
-              Thank you for contacting Adinkra Media. We've received your project information and
-              will review it before getting back to you.
+              Thank you for contacting Adinkra Media. We've received your
+              project information and will review it before getting back to
+              you.
             </p>
           </div>
         )}
@@ -243,7 +253,31 @@ export default function SubmitProject() {
             FORM
         ================================================= */}
 
-        <form onSubmit={handleSubmit} className="mt-14 space-y-8">
+        <form
+          name="project-enquiry"
+          method="POST"
+          data-netlify="true"
+          netlify-honeypot="bot-field"
+          onSubmit={handleSubmit}
+          className="mt-14 space-y-8"
+        >
+          {/* REQUIRED BY NETLIFY */}
+
+          <input
+            type="hidden"
+            name="form-name"
+            value="project-enquiry"
+          />
+
+          {/* SPAM HONEYPOT */}
+
+          <div className="hidden">
+            <label>
+              Don't fill this out if you're human:
+              <input name="bot-field" onChange={handleChange} />
+            </label>
+          </div>
+
           {/* =================================================
               CONTACT INFORMATION
           ================================================= */}
@@ -254,11 +288,11 @@ export default function SubmitProject() {
             </h2>
 
             <div className="mt-8 grid gap-6 md:grid-cols-2">
-              {/* NAME */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium">
                   Name *
                 </label>
+
                 <input
                   id="name"
                   name="name"
@@ -271,11 +305,11 @@ export default function SubmitProject() {
                 />
               </div>
 
-              {/* COMPANY */}
               <div>
                 <label htmlFor="company" className="block text-sm font-medium">
                   Company / Studio
                 </label>
+
                 <input
                   id="company"
                   name="company"
@@ -287,11 +321,11 @@ export default function SubmitProject() {
                 />
               </div>
 
-              {/* EMAIL */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium">
                   Email *
                 </label>
+
                 <input
                   id="email"
                   name="email"
@@ -304,11 +338,11 @@ export default function SubmitProject() {
                 />
               </div>
 
-              {/* PHONE */}
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium">
                   Phone / WhatsApp
                 </label>
+
                 <input
                   id="phone"
                   name="phone"
@@ -332,11 +366,14 @@ export default function SubmitProject() {
             </h2>
 
             <div className="mt-8 space-y-6">
-              {/* PROJECT NAME */}
               <div>
-                <label htmlFor="projectName" className="block text-sm font-medium">
+                <label
+                  htmlFor="projectName"
+                  className="block text-sm font-medium"
+                >
                   Project Name *
                 </label>
+
                 <input
                   id="projectName"
                   name="projectName"
@@ -349,11 +386,14 @@ export default function SubmitProject() {
                 />
               </div>
 
-              {/* PROJECT TYPE */}
               <div>
-                <label htmlFor="projectType" className="block text-sm font-medium">
+                <label
+                  htmlFor="projectType"
+                  className="block text-sm font-medium"
+                >
                   Project Type *
                 </label>
+
                 <select
                   id="projectType"
                   name="projectType"
@@ -363,6 +403,7 @@ export default function SubmitProject() {
                   className="mt-2 w-full border border-adinkra-gold/20 bg-adinkra-bg px-4 py-3 text-adinkra-gold outline-none focus:border-adinkra-highlight"
                 >
                   <option value="">Select project type</option>
+
                   {PROJECT_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {type}
@@ -371,11 +412,14 @@ export default function SubmitProject() {
                 </select>
               </div>
 
-              {/* DESCRIPTION */}
               <div>
-                <label htmlFor="description" className="block text-sm font-medium">
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium"
+                >
                   Project Description *
                 </label>
+
                 <textarea
                   id="description"
                   name="description"
@@ -398,6 +442,7 @@ export default function SubmitProject() {
             <h2 className="font-heading text-3xl font-bold text-adinkra-highlight">
               Services Required
             </h2>
+
             <p className="mt-3 text-sm text-adinkra-gold/60">
               Select all services that apply.
             </p>
@@ -405,6 +450,7 @@ export default function SubmitProject() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {SERVICES.map((service) => {
                 const selected = formData.services.includes(service);
+
                 return (
                   <label
                     key={service}
@@ -416,10 +462,13 @@ export default function SubmitProject() {
                   >
                     <input
                       type="checkbox"
+                      name="service"
+                      value={service}
                       checked={selected}
                       onChange={() => handleServiceChange(service)}
                       className="h-4 w-4"
                     />
+
                     <span>{service}</span>
                   </label>
                 );
@@ -433,7 +482,7 @@ export default function SubmitProject() {
 
           <section className="border border-adinkra-gold/15 bg-adinkra-card p-8">
             <h2 className="font-heading text-3xl font-bold text-adinkra-highlight">
-              Budget & Timeline
+              Budget &amp; Timeline
             </h2>
 
             <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -441,6 +490,7 @@ export default function SubmitProject() {
                 <label htmlFor="budget" className="block text-sm font-medium">
                   Estimated Budget
                 </label>
+
                 <select
                   id="budget"
                   name="budget"
@@ -449,6 +499,7 @@ export default function SubmitProject() {
                   className="mt-2 w-full border border-adinkra-gold/20 bg-adinkra-bg px-4 py-3 text-adinkra-gold outline-none focus:border-adinkra-highlight"
                 >
                   <option value="">Select estimated budget</option>
+
                   {BUDGET_OPTIONS.map((budget) => (
                     <option key={budget} value={budget}>
                       {budget}
@@ -461,6 +512,7 @@ export default function SubmitProject() {
                 <label htmlFor="deadline" className="block text-sm font-medium">
                   Deadline
                 </label>
+
                 <input
                   id="deadline"
                   name="deadline"
@@ -479,15 +531,18 @@ export default function SubmitProject() {
 
           <section className="border border-adinkra-gold/15 bg-adinkra-card p-8">
             <h2 className="font-heading text-3xl font-bold text-adinkra-highlight">
-              References & Notes
+              References &amp; Notes
             </h2>
 
             <div className="mt-8 space-y-6">
-              {/* REFERENCE LINKS */}
               <div>
-                <label htmlFor="referenceLinks" className="block text-sm font-medium">
+                <label
+                  htmlFor="referenceLinks"
+                  className="block text-sm font-medium"
+                >
                   Reference Links
                 </label>
+
                 <textarea
                   id="referenceLinks"
                   name="referenceLinks"
@@ -497,17 +552,18 @@ export default function SubmitProject() {
                   className="mt-2 w-full resize-y border border-adinkra-gold/20 bg-adinkra-bg px-4 py-3 text-adinkra-gold outline-none focus:border-adinkra-highlight"
                   placeholder="Paste links to references, demos, videos, briefs, Google Drive folders, etc."
                 />
+
                 <p className="mt-2 text-xs text-adinkra-gold/50">
-                  For large audio or video files, please provide a shareable link instead of uploading
-                  them here.
+                  For large audio or video files, please provide a shareable
+                  link instead of uploading them here.
                 </p>
               </div>
 
-              {/* ADDITIONAL NOTES */}
               <div>
                 <label htmlFor="notes" className="block text-sm font-medium">
                   Additional Notes
                 </label>
+
                 <textarea
                   id="notes"
                   name="notes"
@@ -527,8 +583,9 @@ export default function SubmitProject() {
 
           <div className="border border-adinkra-gold/15 bg-adinkra-card p-8">
             <p className="text-sm leading-relaxed text-adinkra-gold/60">
-              Submitting this form does not create a binding agreement or guarantee acceptance of your
-              project. We will review your requirements and contact you regarding availability, pricing,
+              Submitting this form does not create a binding agreement or
+              guarantee acceptance of your project. We will review your
+              requirements and contact you regarding availability, pricing,
               and next steps.
             </p>
 
