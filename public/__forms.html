@@ -1,0 +1,53 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Adinkra Media Forms</title>
+</head>
+
+<body>
+
+  <form
+    name="project-enquiry"
+    method="POST"
+    data-netlify="true"
+    netlify-honeypot="bot-field"
+  >
+    <input type="hidden" name="form-name" value="project-enquiry" />
+
+    <p>
+      <label>
+        Don't fill this out:
+        <input name="bot-field" />
+      </label>
+    </p>
+
+    <input type="text" name="name" />
+    <input type="text" name="company" />
+    <input type="email" name="email" />
+    <input type="text" name="phone" />
+
+    <input type="text" name="projectName" />
+    <input type="text" name="projectType" />
+
+    <input type="text" name="services" />
+
+    <textarea name="description"></textarea>
+
+    <input type="text" name="budget" />
+    <input type="text" name="deadline" />
+
+    <textarea name="referenceLinks"></textarea>
+    <textarea name="notes"></textarea>
+
+    <input type="text" name="subject" />
+
+    <button type="submit">
+      Submit Project
+    </button>
+  </form>
+
+</body>
+</html>
+```
