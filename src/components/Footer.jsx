@@ -1,95 +1,118 @@
-// Footer.jsx
-
-import { Link } from "react-router-dom";
 
 export default function Footer() {
-  return (
-    <footer className="bg-adinkra-bg text-adinkra-gold py-12">
-      <div className="max-w-screen-xl mx-auto px-4 grid md:grid-cols-4 gap-8">
-        {/* About */}
-        <div>
-          <h3 className="text-xl font-bold mb-4">Adinkra Media</h3>
+  const currentYear = new Date().getFullYear();
 
-          <p className="text-sm text-adinkra-gold/80 leading-relaxed">
-            Professional audio production and post-production for film,
-            television, advertising, gaming, broadcast, and digital media.
+  const ventures = [
+    {
+      name: "Adinkra Digital",
+      href: "https://digital.adinkramedia.com/",
+    },
+    {
+      name: "Adinkra Library",
+      href: "https://audio.adinkramedia.com/",
+    },
+    {
+      name: "Adinkra Tickets",
+      href: "https://ticketa.adinkramedia.com/",
+    },
+    {
+      name: "Adinkra Music",
+      href: "https://music.adinkramedia.com/",
+    },
+    {
+      name: "Zen Orb",
+      href: "https://zen.adinkramedia.com/",
+    },
+    {
+      name: "Adinkra TV",
+      href: "https://tv.adinkramedia.com/",
+    },
+  ];
+
+  return (
+    <footer className="bg-adinkra-bg text-white">
+      <div className="mx-auto grid max-w-screen-xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
+        {/* COMPANY */}
+        <div>
+          <a
+            href="/"
+            className="mb-4 inline-block text-xl font-bold tracking-wide text-adinkra-gold"
+          >
+            Adinkra Media
+          </a>
+
+          <p className="mb-5 max-w-sm text-sm leading-relaxed text-white/65">
+            A media and technology company building digital products,
+            developing online platforms, and creating opportunities
+            across media, entertainment, and technology.
           </p>
+
+          <a
+            href="https://digital.adinkramedia.com/"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-adinkra-gold transition-colors hover:text-white"
+          >
+            Explore Adinkra Digital
+            <span aria-hidden="true">→</span>
+          </a>
         </div>
 
-        {/* Services */}
+        {/* OUR ECOSYSTEM */}
         <div>
-          <h3 className="text-xl font-bold mb-4">Services</h3>
+          <h3 className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-adinkra-gold">
+            Our Ecosystem
+          </h3>
 
-          <ul className="space-y-2 text-sm text-adinkra-gold/80">
-            <li>Custom Music Production</li>
-            <li>Film Scoring</li>
-            <li>Sound Design &amp; Foley</li>
-            <li>Audio Post-Production</li>
-            <li>Mixing &amp; Mastering</li>
+          <ul className="space-y-3 text-sm text-white/65">
+            {ventures.map((venture) => (
+              <li key={venture.name}>
+                <a
+                  href={venture.href}
+                  className="transition-colors hover:text-adinkra-gold"
+                >
+                  {venture.name}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
 
-        {/* Contact */}
+        {/* CONTACT */}
         <div>
-          <h3 className="text-xl font-bold mb-4">Contact</h3>
+          <h3 className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-adinkra-gold">
+            Get in Touch
+          </h3>
 
-          <p className="text-sm text-adinkra-gold/80">
-            Project enquiries:{" "}
-            <a
-              href="mailto:sales@adinkramedia.com"
-              className="underline hover:text-adinkra-highlight transition-colors"
-            >
-              sales@adinkramedia.com
-            </a>
+          <p className="mb-4 text-sm leading-relaxed text-white/65">
+            For business enquiries, project discussions, partnerships,
+            or collaborations, get in touch with our team.
           </p>
 
-          <p className="text-sm text-adinkra-gold/80 mt-2">
-            Phone: +27 72 076 1243
-          </p>
+          <a
+            href="mailto:info@adinkramedia.com?subject=Adinkra%20Media%20Enquiry"
+            className="break-words text-sm font-medium text-adinkra-gold transition-colors hover:text-white"
+          >
+            info@adinkramedia.com
+          </a>
 
-          <p className="text-sm text-adinkra-gold/80 mt-2">
+          <p className="mt-4 text-sm text-white/50">
             Johannesburg, South Africa
           </p>
-        </div>
 
-        {/* Legal */}
-        <div>
-          <h3 className="text-xl font-bold mb-4">Legal</h3>
-
-          <ul className="space-y-2 text-sm text-adinkra-gold/80">
-            <li>
-              <Link
-                to="/terms"
-                className="hover:text-adinkra-highlight hover:underline transition-colors"
-              >
-                Terms of Service
-              </Link>
-            </li>
-
-            <li>
-              <Link
-                to="/privacy"
-                className="hover:text-adinkra-highlight hover:underline transition-colors"
-              >
-                Privacy Policy
-              </Link>
-            </li>
-
-            <li>
-              <Link
-                to="/refunds"
-                className="hover:text-adinkra-highlight hover:underline transition-colors"
-              >
-                Refund Policy
-              </Link>
-            </li>
-          </ul>
+          <p className="mt-4 text-sm text-white/65">
+            Adinkra Media (Pty) Ltd
+          </p>
         </div>
       </div>
 
-      {/* Copyright */}
-      <div className="mt-8 border-t border-adinkra-gold/30 pt-4 text-center text-sm text-adinkra-gold/60">
-        © {new Date().getFullYear()} Adinkra Media Pty Ltd. All rights reserved.
+      {/* COPYRIGHT */}
+      <div className="border-t border-white/10">
+        <div className="mx-auto flex max-w-screen-xl flex-col gap-3 px-4 py-5 text-xs text-white/45 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {currentYear} Adinkra Media (Pty) Ltd. All rights reserved.
+          </p>
+
+          <p>Media. Technology. Original Ideas.</p>
+        </div>
       </div>
     </footer>
   );

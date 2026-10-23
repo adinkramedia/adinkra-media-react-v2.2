@@ -1,124 +1,217 @@
-// FeaturedSections.jsx
-
-import { Link } from "react-router-dom";
-
-const services = [
+const ventures = [
   {
-    id: "custom-music",
-    title: "Custom Music Production",
+    id: "digital",
+    name: "Adinkra Digital",
+    category: "Digital Development",
     description:
-      "Original compositions created for film, brands, advertising, visual media, and commercial productions. Built from the ground up to support your creative vision.",
-    image: "/custom-music.png",
+      "We build professional websites, web applications, and digital platforms for businesses, organisations, and ambitious ideas.",
+    image: "/digital-venture.png",
+    link: "https://digital.adinkramedia.com/",
+    linkLabel: "Explore Digital",
   },
   {
-    id: "film-scoring",
-    title: "Film Scoring",
+    id: "library",
+    name: "Adinkra Library",
+    category: "Music & Sound Resources",
     description:
-      "Cinematic scores for films, trailers, documentaries, and visual storytelling. Music shaped around the emotion, pacing, and identity of every scene.",
-    image: "/film-scoring.png",
+      "An original catalogue of music and sound resources for film, media productions, creative projects, and digital experiences.",
+    image: "/library-venture.png",
+    link: "https://audio.adinkramedia.com/",
+    linkLabel: "Explore the Library",
   },
   {
-    id: "mixing-mastering",
-    title: "Mixing & Mastering",
+    id: "tickets",
+    name: "Adinkra Tickets",
+    category: "Events & Ticketing",
     description:
-      "Professional mixing and mastering for music, film, podcasts, advertising, and digital content. Clean, balanced, detailed, and ready for delivery.",
-    image: "/mixing-mastering.png",
+      "An event ticketing platform designed to help organisers manage events, sell tickets, and connect with their audiences.",
+    image: "/tickets-venture.png",
+    link: "https://ticketa.adinkramedia.com/",
+    linkLabel: "Explore Adinkra Tickets",
   },
   {
-    id: "sound-design",
-    title: "Sound Design",
+    id: "music",
+    name: "Adinkra Music",
+    category: "Music Discovery & Radio",
     description:
-      "Custom sound design for film, games, advertising, UI/UX, and digital media. Bespoke sonic elements crafted to give every project depth and character.",
-    image: "/sound-design.png",
+      "A music discovery and online radio platform exploring new ways for listeners to discover music, artists, and sounds.",
+    image: "/music-venture.png",
+    link: "https://music.adinkramedia.com/",
+    linkLabel: "Explore Adinkra Music",
+  },
+  {
+    id: "zen-orb",
+    name: "Zen Orb",
+    category: "Digital Experiences",
+    description:
+      "A digital venture exploring focused, immersive experiences through thoughtful design and technology.",
+    image: "/zen-orb-venture.png",
+    link: "https://zen.adinkramedia.com/",
+    linkLabel: "Explore Zen Orb",
+  },
+  {
+    id: "tv",
+    name: "Adinkra TV",
+    category: "Media & Video",
+    description:
+      "A media venture exploring video content, digital viewing experiences, and screen-based storytelling.",
+    image: "/adinkra-tv-venture.png",
+    link: "https://tv.adinkramedia.com/",
+    linkLabel: "Explore Adinkra TV",
   },
 ];
 
 export default function FeaturedSections() {
   return (
-    <section className="bg-adinkra-bg text-adinkra-gold py-20 md:py-28 px-4">
-      <div className="max-w-screen-xl mx-auto">
-        {/* COMPANY INTRO */}
-        <div className="max-w-4xl mx-auto text-center mb-20">
-          <p className="text-sm tracking-[0.3em] uppercase text-adinkra-gold/60 mb-4">
-            Adinkra Media
+    <section
+      id="ecosystem"
+      className="bg-adinkra-bg px-4 py-20 text-white md:py-28"
+    >
+      <div className="mx-auto max-w-screen-xl">
+        {/* COMPANY INTRODUCTION */}
+        <div className="mx-auto mb-20 max-w-4xl text-center">
+          <p className="mb-4 text-sm uppercase tracking-[0.3em] text-adinkra-gold/70">
+            Who We Are
           </p>
 
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Sound. Culture. Story.
+          <h2 className="mb-6 text-3xl font-bold leading-tight md:text-5xl">
+            Where technology meets{" "}
+            <span className="text-adinkra-gold">
+              creative possibility.
+            </span>
           </h2>
 
-          <p className="text-lg md:text-xl leading-relaxed text-adinkra-gold/85 mb-6">
-            Adinkra Media is a professional audio production and
-            post-production company creating original music, sound design,
-            and complete audio solutions for film, television, advertising,
-            gaming, broadcast, and digital media.
+          <p className="mb-6 text-lg leading-relaxed text-white/80 md:text-xl">
+            Adinkra Media is a South African company working across
+            technology, music, media and creative production. We develop
+            digital products and platforms, create 3D visualisations
+            and animations, produce original music and sound, and bring
+            ideas, products and technologies to life through visual and
+            audio experiences.
           </p>
 
-          <p className="text-base md:text-lg leading-relaxed text-adinkra-gold/70 mb-5">
-            We work across the full audio process, from the first creative
-            concept through production, post-production, mixing, mastering,
-            and final delivery. Whether a project needs an original score,
-            distinctive sound design, or a complete audio post-production
-            solution, we build sound around the story, the audience, and the
-            creative vision.
-          </p>
-
-          <p className="text-base md:text-lg leading-relaxed text-adinkra-gold/70">
-            Our approach combines technical precision with creative direction,
-            bringing together music, sound effects, Foley, dialogue, mixing,
-            mastering, and other audio elements to create sound that feels
-            intentional, immersive, and production-ready.
+          <p className="mx-auto max-w-3xl text-base leading-relaxed text-white/60 md:text-lg">
+            From websites and software to product visualisation, technical
+            explainers, music production and media projects, we combine
+            creative thinking with practical execution. Alongside our
+            work for clients, we build our own products, platforms and
+            ventures across different industries.
           </p>
         </div>
 
-        {/* WHAT WE DO */}
-        <div>
-          <div className="text-center mb-12">
-            <p className="text-sm tracking-[0.3em] uppercase text-adinkra-gold/60 mb-3">
-              Our Services
+        {/* ECOSYSTEM INTRODUCTION */}
+        <div className="mb-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-adinkra-gold/70">
+              Our Ecosystem
             </p>
 
-            <h2 className="text-3xl md:text-4xl font-bold">What We Do</h2>
+            <h2 className="text-3xl font-bold text-white md:text-4xl">
+              Different ideas. One growing ecosystem.
+            </h2>
           </div>
 
-          {/* SERVICES GRID */}
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {services.map((service) => (
-              <div
-                key={service.id}
-                className="bg-adinkra-card rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-transform duration-300 hover:-translate-y-1 group"
-              >
-                {/* IMAGE */}
-                <div className="overflow-hidden h-48">
-                  <img
-                    src={service.image}
-                    alt={service.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
+          <p className="max-w-md leading-relaxed text-white/60 md:text-right">
+            Explore our digital services, music and sound resources,
+            independent products, and media ventures.
+          </p>
+        </div>
 
-                {/* CONTENT */}
-                <div className="p-6 flex flex-col justify-between min-h-[250px]">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 text-adinkra-gold group-hover:text-adinkra-highlight transition-colors">
-                      {service.title}
-                    </h3>
+        {/* VENTURE GRID */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {ventures.map((venture) => (
+            <article
+              key={venture.id}
+              className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-adinkra-card transition-all duration-300 hover:-translate-y-1 hover:border-adinkra-gold/40 hover:shadow-xl"
+            >
+              {/* IMAGE */}
+              <div className="relative h-56 overflow-hidden bg-black/20">
+                <img
+                  src={venture.image}
+                  alt={venture.name}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
 
-                    <p className="text-sm text-adinkra-gold/80 leading-relaxed">
-                      {service.description}
-                    </p>
-                  </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
-                  {/* CTA */}
-                  <Link
-                    to="/submit-project"
-                    className="mt-6 text-sm bg-adinkra-highlight text-adinkra-bg font-semibold py-2 px-4 rounded hover:bg-yellow-500 transition-all text-center inline-block w-max"
-                  >
-                    Start a Project →
-                  </Link>
-                </div>
+                <span className="absolute bottom-4 left-5 text-xs uppercase tracking-widest text-white/85">
+                  {venture.category}
+                </span>
               </div>
-            ))}
+
+              {/* CONTENT */}
+              <div className="flex flex-1 flex-col p-6">
+                <h3 className="mb-3 text-xl font-semibold text-adinkra-gold transition-colors group-hover:text-white">
+                  {venture.name}
+                </h3>
+
+                <p className="mb-6 flex-1 text-sm leading-relaxed text-white/65">
+                  {venture.description}
+                </p>
+
+                <a
+                  href={venture.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-adinkra-gold transition-colors hover:text-white"
+                >
+                  {venture.linkLabel}
+                  <span aria-hidden="true">→</span>
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {/* COMPANY CAPABILITIES */}
+        <div className="mt-20 grid gap-10 border-t border-white/10 pt-12 md:grid-cols-3">
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.2em] text-adinkra-gold/70">
+              01 / Develop
+            </p>
+
+            <h3 className="mb-3 text-xl font-semibold">
+              Technology & digital products
+            </h3>
+
+            <p className="text-sm leading-relaxed text-white/60">
+              We develop websites, web applications, digital platforms
+              and independent products that solve problems, serve
+              audiences and create new opportunities.
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.2em] text-adinkra-gold/70">
+              02 / Create
+            </p>
+
+            <h3 className="mb-3 text-xl font-semibold">
+              Visuals, music & sound
+            </h3>
+
+            <p className="text-sm leading-relaxed text-white/60">
+              We bring ideas to life through 3D modelling, product
+              visualisation, animation, technical explainers, original
+              music, sound design and audio post-production.
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.2em] text-adinkra-gold/70">
+              03 / Build
+            </p>
+
+            <h3 className="mb-3 text-xl font-semibold">
+              Ventures & media
+            </h3>
+
+            <p className="text-sm leading-relaxed text-white/60">
+              We build our own products, platforms and creative
+              initiatives across music, events, entertainment and
+              media, exploring ideas with the potential to grow.
+            </p>
           </div>
         </div>
       </div>

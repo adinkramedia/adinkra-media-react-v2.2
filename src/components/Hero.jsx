@@ -1,36 +1,40 @@
-// Hero.jsx
-
 export default function Hero() {
   return (
     <section
-      className="w-full h-[90vh] relative bg-cover bg-center bg-no-repeat bg-[url('/hero-mobile.jpg')] md:bg-[url('/hero-desktop.jpg')]"
+      className="relative min-h-[90vh] w-full bg-[url('/hero-mobile.jpg')] bg-cover bg-center bg-no-repeat md:bg-[url('/hero-desktop.jpg')]"
     >
-      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-4">
-        <div className="max-w-4xl">
-          <h1 className="text-4xl md:text-6xl font-bold text-adinkra-gold mb-6 drop-shadow-lg">
-            Sound for Film, Media &amp; Digital
-          </h1>
-
-          <p className="text-lg md:text-2xl max-w-3xl mx-auto text-white leading-relaxed drop-shadow-md">
-            World-class audio production and post-production for film,
-            television, advertising, gaming, and digital media.
+      <div className="absolute inset-0 flex items-center justify-center bg-black/55 px-4 py-20 text-center">
+        <div className="max-w-5xl">
+          <p className="mb-6 text-sm font-semibold uppercase tracking-[0.3em] text-adinkra-gold md:text-base">
+            Adinkra Media
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            {/* START A PROJECT */}
+          <h1 className="mb-6 text-4xl font-bold leading-tight text-white drop-shadow-lg md:text-6xl lg:text-7xl">
+            Media, Technology
+            <span className="block text-adinkra-gold">
+              &amp; Original Ideas.
+            </span>
+          </h1>
+
+          <p className="mx-auto max-w-4xl text-lg leading-relaxed text-white/90 drop-shadow-md md:text-xl lg:text-2xl">
+            We build digital products, create 3D visuals and animations,
+            produce original music and sound, and develop media
+            experiences that bring ideas to life.
+          </p>
+
+          <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
             <a
-              href="/submit-project"
-              className="bg-adinkra-gold text-black px-7 py-3 rounded-xl font-semibold hover:opacity-90 transition"
+              href="#ecosystem"
+              className="rounded-xl bg-adinkra-gold px-7 py-3.5 font-semibold text-black transition hover:opacity-90"
             >
-              Start a Project
+              Explore Our Ecosystem
             </a>
 
-            {/* VIEW OUR WORK */}
             <a
               href="/gallery"
-              className="border border-adinkra-gold px-7 py-3 rounded-xl text-adinkra-gold hover:bg-adinkra-gold hover:text-black transition"
+              className="rounded-xl border border-white/70 px-7 py-3.5 text-white transition hover:bg-white hover:text-black"
             >
-              View Our Work
+              Explore Our Creative Work
             </a>
           </div>
         </div>
